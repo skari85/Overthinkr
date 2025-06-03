@@ -9,8 +9,14 @@ import { APIProvider } from "@/contexts/api-context"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Overthinkr - Stop Overthinking, Start Clarity",
+  title: {
+    template: "Overthinkr | %s",
+    default: "Overthinkr",
+  },
   description: "A simple but powerful web app that helps people figure out whether they're overthinking something.",
+  keywords: ["overthinking", "AI", "mental health", "clarity"],
+  authors: [{ name: "Your Name" }],
+  creator: "Your Name",
     generator: 'v0.dev'
 }
 
