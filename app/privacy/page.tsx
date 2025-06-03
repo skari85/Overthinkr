@@ -3,7 +3,7 @@ import { Shield, Lock, Eye, Database } from "lucide-react"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Privacy Policy - Overthinkr",
+  title: "Privacy Policy",
   description: "Learn how Overthinkr protects your privacy and data",
 }
 
