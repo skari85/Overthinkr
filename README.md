@@ -1,30 +1,69 @@
-# Overthinkr tagline analysis
+# Overthinkr
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+**Overthinkr** is a web application designed to help people determine whether they're overthinking a problem or situation.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/georgoskar-7854s-projects/v0-overthinkr-tagline-analysis)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/O6dKTtHbVXT)
+---
 
-## Overview
+## 🧠 Who It's For:
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+- **Anyone prone to overthinking** – people who get stuck in analysis paralysis
+- **Decision-makers** who second-guess themselves frequently
+- **Anxious individuals** who spiral into worry loops
+- **People seeking quick perspective** on everyday dilemmas
 
-## Deployment
+---
 
-Your project is live at:
+## 💡 What It Does:
 
-**[https://vercel.com/georgoskar-7854s-projects/v0-overthinkr-tagline-analysis](https://vercel.com/georgoskar-7854s-projects/v0-overthinkr-tagline-analysis)**
+Overthinkr acts as a digital "reality check" friend. Users describe their problem or concern, and the AI responds with one of two verdicts:
 
-## Build your app
+1. **"Yep, you're overthinking."** – followed by gentle advice to simplify or let go  
+2. **"Nah, this might be valid."** – followed by encouragement or actionable steps
 
-Continue building your app on:
+---
 
-**[https://v0.dev/chat/projects/O6dKTtHbVXT](https://v0.dev/chat/projects/O6dKTtHbVXT)**
+## 🔑 Key Features:
 
-## How It Works
+- 🗨️ **Simple chat interface** – just type your concern and get instant feedback
+- 🔒 **Privacy-focused** – conversations stay local, no data collection
+- 🧠 **Multiple AI services** – supports Groq and OpenRouter (bring your own key)
+- ⚡ **Quick responses** – designed for brief, to-the-point insights
+- 🆓 **Free to use** – you only pay for your own AI API usage
 
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+---
+
+## 📦 Example Use Cases:
+
+- "Should I text them again?"
+- "I'm worried about my presentation tomorrow"
+- "Am I making too big a deal about this?"
+- "Should I quit my job over this issue?"
+
+---
+
+## 🗝️ Bring Your Own API Key (Required)
+
+To use Overthinkr, you must supply your own API key for one of the supported services:
+
+### Supported Backends:
+- 🧠 [Groq API](https://console.groq.com/)
+- 🔁 [OpenRouter API](https://openrouter.ai/)
+
+### Setup:
+1. Create a `.env` file
+2. Add one of the following:
+
+```env
+# For Groq
+GROQ_API_KEY=your-groq-key-here
+
+# Or for OpenRouter
+OPENROUTER_API_KEY=your-openrouter-key-here
+```
+
+3. Run the app – no bundled key is included. You’re in full control of your data and costs.
+
+---
+
+Overthinkr is a **digital overthinking detector** — a lightweight, privacy-first tool for quick clarity on your concerns.
+
