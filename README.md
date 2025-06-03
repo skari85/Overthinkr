@@ -22,14 +22,25 @@ Overthinkr acts as a digital "reality check" friend. Users describe their proble
 
 ---
 
-## 🔑 Key Features:
+## ## 🔑 Key Features:
 
 - 🗨️ **Simple chat interface** – just type your concern and get instant feedback
 - 🔒 **Privacy-focused** – conversations stay local, no data collection
-- 🧠 **Multiple AI services** – supports Groq and OpenRouter (bring your own key)
+- 🧠 **Multiple AI services** – supports Groq and OpenRouter
 - ⚡ **Quick responses** – designed for brief, to-the-point insights
 - 🆓 **Free to use** – you only pay for your own AI API usage
 
+---
+
+## 🗝️ Bring Your Own API Key (Directly in App)
+
+To use Overthinkr, simply paste your own API key (Groq or OpenRouter) into the box provided in the chat interface.
+
+### Supported Providers:
+- 🧠 [Groq API](https://console.groq.com/)
+- 🔁 [OpenRouter API](https://openrouter.ai/)
+
+No server-side storage, no signup, no .env files — your key stays on your device.
 ---
 
 ## 📦 Example Use Cases:
