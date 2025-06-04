@@ -3,12 +3,12 @@
 import { useChat } from "ai/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useEffect, useRef, useState } from "react"
 import { Message } from "@/components/message"
 import { TypingIndicator } from "@/components/typing-indicator"
-import { RefreshCw, Send, Trash2, Share2 } from "lucide-react"
+import { RefreshCw, Send, Trash2, Share2, ArrowLeft } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAPI } from "@/contexts/api-context"
 import { APIConfig } from "@/components/api-config"
@@ -16,9 +16,16 @@ import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ShareDialog } from "@/components/share-dialog"
 import { toast } from "@/components/ui/use-toast"
-import { saveClassification } from "@/lib/analytics-utils" // Import the new utility
+import { saveClassification } from "@/lib/analytics-utils"
+import { generateShareLink, copyToClipboard } from "@/lib/share-utils" // Import new share utilities
+import type { Message as AIMessage } from "ai"
+import Link from "next/link"
 
-export default function OverthinkrChat() {
+interface OverthinkrChatProps {
+  sharedMessages?: AIMessage[] | null
+}
+
+export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) {
   const { selectedService, getActiveApiKey, isConfigured } = useAPI()
   const { messages, input, handleInputChange, handleSubmit, setMessages, reload, isLoading } = useChat({
     api: "/api/chat",
@@ -27,7 +34,6 @@ export default function OverthinkrChat() {
       apiKey: getActiveApiKey(),
     },
     onFinish: (message) => {
-      // Parse the AI's response to determine classification
       const content = message.content.toLowerCase()
       if (content.startsWith("yep, you're overthinking")) {
         saveClassification("overthinking")
@@ -38,7 +44,7 @@ export default function OverthinkrChat() {
   })
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [newMessageId, setNewMessageId] = useState<string | null>(null)
-  const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [shareAllDialogOpen, setShareAllDialogOpen] = useState(false)
 
   const handleClearChat = () => {
     setMessages([])
@@ -48,12 +54,12 @@ export default function OverthinkrChat() {
     if (messages.length > 0) {
       const lastUserMessage = messages.filter((m) => m.role === "user").pop()
       if (lastUserMessage) {
-        reload() // Reloads the last message
+        reload()
       }
     }
   }
 
-  const handleShare = () => {
+  const handleShareAll = () => {
     if (messages.length === 0) {
       toast({
         title: "Nothing to share",
@@ -62,18 +68,53 @@ export default function OverthinkrChat() {
       })
       return
     }
-    setShareDialogOpen(true)
+    setShareAllDialogOpen(true)
+  }
+
+  const handleShareSpecificMessage = async (messageId: string) => {
+    const messageIndex = messages.findIndex((m) => m.id === messageId)
+    if (messageIndex === -1) return
+
+    // Find the user's question that led to this AI reply
+    let startIndex = messageIndex
+    while (startIndex >= 0 && messages[startIndex].role !== "user") {
+      startIndex--
+    }
+    if (startIndex < 0) startIndex = messageIndex // Fallback if no user message found before AI reply
+
+    const messagesToShare = messages.slice(startIndex, messageIndex + 1)
+    const shareLink = generateShareLink(messagesToShare)
+
+    if (shareLink) {
+      const success = await copyToClipboard(shareLink)
+      if (success) {
+        toast({
+          title: "Share link copied!",
+          description: "The link to this conversation snippet has been copied to your clipboard.",
+        })
+      } else {
+        toast({
+          title: "Failed to copy link",
+          description: "Could not copy the share link. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } else {
+      toast({
+        title: "Failed to generate link",
+        description: "Could not generate a shareable link for this message.",
+        variant: "destructive",
+      })
+    }
   }
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
 
-    // Set the newest message ID for animation
     if (messages.length > 0) {
       const newestMessage = messages[messages.length - 1]
       setNewMessageId(newestMessage.id)
 
-      // Clear the newest message ID after animation
       const timer = setTimeout(() => {
         setNewMessageId(null)
       }, 1000)
@@ -82,6 +123,39 @@ export default function OverthinkrChat() {
     }
   }, [messages])
 
+  // If sharedMessages are provided, render only them
+  if (sharedMessages) {
+    return (
+      <div className="container mx-auto py-6 px-4 md:py-10">
+        <div className="mx-auto max-w-3xl">
+          <Card className="border-2 shadow-lg rounded-xl overflow-hidden">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Share2 className="h-5 w-5" />
+                Shared Conversation Snippet
+              </CardTitle>
+              <CardDescription>This is a shared portion of an Overthinkr conversation.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 space-y-4">
+              {sharedMessages.map((m) => (
+                <Message key={m.id} content={m.content} role={m.role as "user" | "assistant"} />
+              ))}
+            </CardContent>
+            <div className="border-t p-4 flex justify-center">
+              <Link href="/chat" passHref>
+                <Button className="bg-overthinkr-600 hover:bg-overthinkr-700">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Go to Full Chat
+                </Button>
+              </Link>
+            </div>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  // Default chat view
   return (
     <div className="container mx-auto py-6 px-4 md:py-10">
       <div className="mx-auto max-w-3xl">
@@ -104,12 +178,16 @@ export default function OverthinkrChat() {
                   </div>
                 )}
 
-                {messages.map((m) => (
+                {messages.map((m, index) => (
                   <Message
                     key={m.id}
                     content={m.content}
                     role={m.role as "user" | "assistant"}
                     isNew={m.id === newMessageId}
+                    // Show share button only for AI messages that are not the last message (if loading)
+                    // and if there's a user message before it to form a pair
+                    showShareButton={m.role === "assistant" && !isLoading && index > 0}
+                    onShare={() => handleShareSpecificMessage(m.id)}
                   />
                 ))}
 
@@ -159,7 +237,7 @@ export default function OverthinkrChat() {
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={handleShare}
+                      onClick={handleShareAll}
                       disabled={messages.length === 0}
                       className="h-9 w-9"
                     >
@@ -168,7 +246,7 @@ export default function OverthinkrChat() {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Share conversation</p>
+                    <p>Share entire conversation</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -231,7 +309,7 @@ export default function OverthinkrChat() {
           <APIConfig />
         </div>
       </div>
-      <ShareDialog open={shareDialogOpen} onOpenChange={setShareDialogOpen} messages={messages} />
+      <ShareDialog open={shareAllDialogOpen} onOpenChange={setShareAllDialogOpen} messages={messages} />
     </div>
   )
 }
