@@ -17,8 +17,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ShareDialog } from "@/components/share-dialog"
 import { toast } from "@/components/ui/use-toast"
 import { saveClassification } from "@/lib/analytics-utils"
-import { generateShareLink } from "@/lib/share-utils" // Keep generateShareLink from here
-import { copyToClipboard } from "@/utils/export-utils" // Import copyToClipboard from its correct location
+import { generateShareLink } from "@/lib/share-utils"
+import { copyToClipboard } from "@/utils/export-utils"
 import type { Message as AIMessage } from "ai"
 import Link from "next/link"
 
@@ -144,7 +144,7 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
             </CardContent>
             <div className="border-t p-4 flex justify-center">
               <Link href="/chat" passHref>
-                <Button className="bg-overthinkr-600 hover:bg-overthinkr-700">
+                <Button variant="customPrimary">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Go to Full Chat
                 </Button>
@@ -218,7 +218,7 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
                     <Button
                       type="submit"
                       disabled={isLoading || !input.trim() || !isConfigured()}
-                      className="bg-overthinkr-600 hover:bg-overthinkr-700"
+                      variant="customPrimary"
                     >
                       <Send className="h-4 w-4" />
                       <span className="sr-only">Send</span>
