@@ -34,7 +34,8 @@ export default function LandingPage() {
         <Button
           onClick={handleEnter}
           size="lg"
-          className="bg-black hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-200 dark:text-black text-white px-8 py-3 text-lg font-medium rounded-lg transition-colors"
+          variant="customPrimary" // Use the new customPrimary variant
+          className="px-8 py-3 text-lg font-medium rounded-lg transition-colors"
         >
           Enter
         </Button>
