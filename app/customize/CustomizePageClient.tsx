@@ -74,7 +74,52 @@ export default function CustomizePageClient() {
     "Roboto Mono",
   ]
 
-  const availableAvatars: AvatarOption[] = ["default", "robot", "person", "abstract", "cat", "dog"]
+  const availableAvatars: AvatarOption[] = [
+    "default",
+    "robot",
+    "person",
+    "abstract",
+    "cat",
+    "dog",
+    "human-1", // New
+    "human-2", // New
+    "human-3", // New
+    "human-4", // New
+    "human-5", // New
+    "human-6", // New
+  ]
+
+  // Helper to get display name for avatar options
+  const getAvatarDisplayName = (option: AvatarOption) => {
+    switch (option) {
+      case "default":
+        return "Default"
+      case "robot":
+        return "Robot"
+      case "person":
+        return "Generic Person"
+      case "abstract":
+        return "Abstract"
+      case "cat":
+        return "Cat"
+      case "dog":
+        return "Dog"
+      case "human-1":
+        return "Curly Hair"
+      case "human-2":
+        return "Red Hair Woman"
+      case "human-3":
+        return "White Hair Man"
+      case "human-4":
+        return "Technologist"
+      case "human-5":
+        return "Farmer"
+      case "human-6":
+        return "Singer"
+      default:
+        return option
+    }
+  }
 
   return (
     <div className="container mx-auto py-6 px-4 md:py-10">
@@ -120,11 +165,37 @@ export default function CustomizePageClient() {
                       <SelectItem key={option} value={option}>
                         <div className="flex items-center gap-2">
                           <img
-                            src={getAvatarSrc() || "/placeholder.svg"}
+                            src={
+                              option === "default"
+                                ? "/placeholder.svg?height=32&width=32"
+                                : option === "robot"
+                                  ? "/placeholder.svg?height=32&width=32&text=🤖"
+                                  : option === "person"
+                                    ? "/placeholder.svg?height=32&width=32&text=👤"
+                                    : option === "abstract"
+                                      ? "/placeholder.svg?height=32&width=32&text=✨"
+                                      : option === "cat"
+                                        ? "/placeholder.svg?height=32&width=32&text=🐱"
+                                        : option === "dog"
+                                          ? "/placeholder.svg?height=32&width=32&text=🐶"
+                                          : option === "human-1"
+                                            ? "/placeholder.svg?height=32&width=32&text=🧑‍🦱"
+                                            : option === "human-2"
+                                              ? "/placeholder.svg?height=32&width=32&text=👩‍🦰"
+                                              : option === "human-3"
+                                                ? "/placeholder.svg?height=32&width=32&text=👨‍🦳"
+                                                : option === "human-4"
+                                                  ? "/placeholder.svg?height=32&width=32&text=👩‍💻"
+                                                  : option === "human-5"
+                                                    ? "/placeholder.svg?height=32&width=32&text=👨‍🌾"
+                                                    : option === "human-6"
+                                                      ? "/placeholder.svg?height=32&width=32&text=👩‍🎤"
+                                                      : "/placeholder.svg?height=32&width=32" // Fallback
+                            }
                             alt={option}
                             className="h-5 w-5 rounded-full"
                           />
-                          {option.charAt(0).toUpperCase() + option.slice(1)}
+                          {getAvatarDisplayName(option)}
                         </div>
                       </SelectItem>
                     ))}

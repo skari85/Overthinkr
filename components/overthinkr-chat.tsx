@@ -64,7 +64,6 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
         } else {
           // If reminder is in the past, show it immediately or remove it
           // For simplicity, we'll just remove it if it's already passed and not shown
-          // A more robust solution would check if it was already shown
           // removeReminder(reminder.id);
         }
       })

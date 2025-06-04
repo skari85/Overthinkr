@@ -35,6 +35,7 @@ export function getAnalyticsData(): AnalyticsEntry[] {
     return data ? JSON.parse(data) : []
   } catch (error) {
     console.error("Failed to parse analytics data from local storage:", error)
+    localStorage.removeItem(LOCAL_STORAGE_KEY) // Clear corrupted data
     return []
   }
 }

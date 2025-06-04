@@ -22,6 +22,7 @@ export default function WhatIfExplorer() {
       service: selectedService,
       apiKey: getActiveApiKey(),
       mode: "what-if", // Signal to the API that this is a "what-if" scenario
+      model: localStorage.getItem(`overthinkr-model-${selectedService}`) || undefined, // Pass selected model
     },
   })
   const messagesEndRef = useRef<HTMLDivElement>(null)

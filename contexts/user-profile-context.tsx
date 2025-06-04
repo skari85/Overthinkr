@@ -2,7 +2,19 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 
-export type AvatarOption = "default" | "robot" | "person" | "abstract" | "cat" | "dog"
+export type AvatarOption =
+  | "default"
+  | "robot"
+  | "person"
+  | "abstract"
+  | "cat"
+  | "dog"
+  | "human-1" // New: Curly-haired person
+  | "human-2" // New: Red-haired woman
+  | "human-3" // New: White-haired man
+  | "human-4" // New: Technologist woman
+  | "human-5" // New: Farmer man
+  | "human-6" // New: Singer woman
 
 interface UserProfileContextType {
   nickname: string
@@ -25,6 +37,12 @@ const avatarSrcMap: Record<AvatarOption, string> = {
   abstract: "/placeholder.svg?height=32&width=32&text=✨",
   cat: "/placeholder.svg?height=32&width=32&text=🐱",
   dog: "/placeholder.svg?height=32&width=32&text=🐶",
+  "human-1": "/placeholder.svg?height=32&width=32&text=🧑‍🦱", // Curly-haired person
+  "human-2": "/placeholder.svg?height=32&width=32&text=👩‍🦰", // Red-haired woman
+  "human-3": "/placeholder.svg?height=32&width=32&text=👨‍🦳", // White-haired man
+  "human-4": "/placeholder.svg?height=32&width=32&text=👩‍💻", // Technologist woman
+  "human-5": "/placeholder.svg?height=32&width=32&text=👨‍🌾", // Farmer man
+  "human-6": "/placeholder.svg?height=32&width=32&text=👩‍🎤", // Singer woman
 }
 
 export function UserProfileProvider({ children }: { children: ReactNode }) {

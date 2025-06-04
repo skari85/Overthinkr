@@ -68,7 +68,7 @@ export default function AnalyticsPage() {
                 <p>No analytics data yet. Start chatting with Overthinkr to see your patterns!</p>
                 <Button
                   onClick={() => (window.location.href = "/chat")}
-                  className="mt-4 bg-overthinkr-600 hover:bg-overthinkr-700"
+                  className="bg-overthinkr-600 hover:bg-overthinkr-700 mt-4"
                 >
                   Go to Chat
                 </Button>
