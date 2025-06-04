@@ -1,13 +1,13 @@
 import { ThemeToggle } from "@/components/theme-toggle"
 import Link from "next/link"
 import Image from "next/image"
-import { BarChart3, Palette, LogIn, LogOut } from "lucide-react" // Import LogIn and LogOut icons
+import { BarChart3, Palette, LogIn, LogOut, Lightbulb } from "lucide-react" // Import Lightbulb icon
 import { Button } from "@/components/ui/button"
-import { createClient } from "@/lib/supabase/client" // Import client-side Supabase client
-import { redirect } from "next/navigation" // For server-side redirect
+import { createClient } from "@/lib/supabase/client"
+import { redirect } from "next/navigation"
 
 export async function Header() {
-  const supabase = createClient()
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -16,7 +16,7 @@ export async function Header() {
     "use server"
     const supabaseServer = createClient()
     await supabaseServer.auth.signOut()
-    redirect("/login") // Redirect to login page after logout
+    redirect("/login")
   }
 
   return (
@@ -45,6 +45,13 @@ export async function Header() {
           >
             <Palette className="h-5 w-5" />
             <span className="hidden sm:inline">Customize</span>
+          </Link>
+          <Link
+            href="/what-if"
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors flex items-center gap-1"
+          >
+            <Lightbulb className="h-5 w-5" />
+            <span className="hidden sm:inline">What If</span>
           </Link>
           <ThemeToggle />
           {user ? (
