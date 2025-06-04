@@ -1,19 +1,21 @@
 import { ThemeToggle } from "@/components/theme-toggle"
 import Link from "next/link"
 import Image from "next/image"
-import { BarChart3, Palette, LogIn, LogOut, Lightbulb } from "lucide-react" // Import Lightbulb icon
+import { BarChart3, Palette, LogIn, LogOut, Lightbulb } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/server" // <--- CORRECTED: Import server-side Supabase client
 import { redirect } from "next/navigation"
 
 export async function Header() {
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+  // Use the server-side Supabase client here
+  const supabase = createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
   const handleSignOut = async () => {
     "use server"
+    // Ensure this also uses the server-side client
     const supabaseServer = createClient()
     await supabaseServer.auth.signOut()
     redirect("/login")
