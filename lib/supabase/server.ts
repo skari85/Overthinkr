@@ -4,7 +4,17 @@ import { cookies } from "next/headers"
 export function createClient() {
   const cookieStore = cookies()
 
-  return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+      "Supabase URL and Anon Key are required to create a server client. " +
+        "Ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in your environment variables.",
+    )
+  }
+
+  return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       get(name: string) {
         return cookieStore.get(name)?.value
@@ -15,8 +25,6 @@ export function createClient() {
         } catch (error) {
           // The `cookies().set()` method can only be called in a Server Component or Route Handler
           // from a "Server Actions" or "Route Handlers" context.
-          // If this error is thrown, it's likely because you're calling this from a client component
-          // or a non-Server Action/Route Handler context.
           console.warn("Failed to set cookie:", error)
         }
       },
