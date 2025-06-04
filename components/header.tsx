@@ -1,26 +1,9 @@
 import { ThemeToggle } from "@/components/theme-toggle"
 import Link from "next/link"
 import Image from "next/image"
-import { BarChart3, Palette, LogIn, LogOut, Lightbulb } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { createClient } from "@/lib/supabase/server" // <--- CORRECTED: Import server-side Supabase client
-import { redirect } from "next/navigation"
+import { BarChart3, Palette, Lightbulb } from "lucide-react"
 
-export async function Header() {
-  // Use the server-side Supabase client here
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  const handleSignOut = async () => {
-    "use server"
-    // Ensure this also uses the server-side client
-    const supabaseServer = createClient()
-    await supabaseServer.auth.signOut()
-    redirect("/login")
-  }
-
+export function Header() {
   return (
     <header className="w-full border-b bg-white dark:bg-gray-950 transition-colors">
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
@@ -56,21 +39,6 @@ export async function Header() {
             <span className="hidden sm:inline">What If</span>
           </Link>
           <ThemeToggle />
-          {user ? (
-            <form action={handleSignOut}>
-              <Button type="submit" variant="outline" size="icon" className="h-9 w-9">
-                <LogOut className="h-4 w-4" />
-                <span className="sr-only">Logout</span>
-              </Button>
-            </form>
-          ) : (
-            <Link href="/login" passHref>
-              <Button variant="outline" size="icon" className="h-9 w-9">
-                <LogIn className="h-4 w-4" />
-                <span className="sr-only">Login</span>
-              </Button>
-            </Link>
-          )}
         </div>
       </div>
     </header>

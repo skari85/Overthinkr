@@ -7,9 +7,8 @@ import { ConditionalLayout } from "@/components/conditional-layout"
 import { APIProvider } from "@/contexts/api-context"
 import { UICustomizationProvider, type CustomFont } from "@/contexts/ui-customization-context"
 import { Toaster } from "@/components/ui/toaster"
-import { SupabaseProvider } from "@/providers/supabase-provider"
-import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
+import { Header } from "@/components/header" // Import Header
+import { Footer } from "@/components/footer" // Import Footer
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 const roboto = Roboto({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-roboto" })
@@ -47,8 +46,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  // Fetch environment variables here in the Server Component
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -56,17 +54,14 @@ export default function RootLayout({
         className={`${inter.variable} ${roboto.variable} ${openSans.variable} ${lato.variable} ${montserrat.variable} ${merriweather.variable} ${robotoMono.variable}`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {/* SupabaseProvider must wrap any component that uses useSupabase, including APIProvider */}
-          <SupabaseProvider supabaseUrl={supabaseUrl} supabaseAnonKey={supabaseAnonKey}>
-            <APIProvider>
-              <UICustomizationProvider>
-                <ConditionalLayout header={<Header />} footer={<Footer />}>
-                  {children}
-                </ConditionalLayout>
-                <Toaster />
-              </UICustomizationProvider>
-            </APIProvider>
-          </SupabaseProvider>
+          <APIProvider>
+            <UICustomizationProvider>
+              <ConditionalLayout header={<Header />} footer={<Footer />}>
+                {children}
+              </ConditionalLayout>
+              <Toaster />
+            </UICustomizationProvider>
+          </APIProvider>
         </ThemeProvider>
       </body>
     </html>

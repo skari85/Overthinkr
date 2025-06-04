@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Badge } from "@/components/ui/badge"
 import { useAPI, type AIService } from "@/contexts/api-context"
-import { Settings, ChevronDown, ChevronUp, Key, ExternalLink, Eye, EyeOff, Loader2 } from "lucide-react" // Import Loader2
+import { Settings, ChevronDown, ChevronUp, Key, ExternalLink, Eye, EyeOff } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 export function APIConfig() {
@@ -21,7 +21,6 @@ export function APIConfig() {
     openRouterApiKey,
     setOpenRouterApiKey,
     isConfigured,
-    isLoadingKeys, // Use the new loading state
   } = useAPI()
 
   const [isOpen, setIsOpen] = useState(false)
@@ -49,13 +48,9 @@ export function APIConfig() {
           <div className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             <span>AI Service Configuration</span>
-            {isLoadingKeys ? (
-              <Loader2 className="h-4 w-4 animate-spin ml-2" />
-            ) : (
-              <Badge variant={isConfigured() ? "default" : "destructive"} className="text-xs">
-                {isConfigured() ? "Configured" : "Setup Required"}
-              </Badge>
-            )}
+            <Badge variant={isConfigured() ? "default" : "destructive"} className="text-xs">
+              {isConfigured() ? "Configured" : "Setup Required"}
+            </Badge>
           </div>
           {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </Button>
@@ -69,156 +64,147 @@ export function APIConfig() {
               API Configuration
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Configure your AI service and API keys. Your keys are stored securely in your Supabase profile.
+              Configure your AI service and API keys. Your keys are stored locally and never sent to our servers.
             </p>
           </CardHeader>
 
           <CardContent className="space-y-4">
-            {isLoadingKeys ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-overthinkr-500" />
-                <span className="ml-3 text-muted-foreground">Loading API keys...</span>
+            {/* Service Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="service-select">AI Service</Label>
+              <Select value={selectedService} onValueChange={handleServiceChange}>
+                <SelectTrigger id="service-select">
+                  <SelectValue placeholder="Select AI service" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="groq">
+                    <div className="flex items-center justify-between w-full">
+                      <span>Groq</span>
+                      <Badge
+                        variant={getServiceStatus("groq") === "configured" ? "default" : "secondary"}
+                        className="ml-2"
+                      >
+                        {getServiceStatus("groq") === "configured" ? "✓" : "○"}
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="openrouter">
+                    <div className="flex items-center justify-between w-full">
+                      <span>OpenRouter</span>
+                      <Badge
+                        variant={getServiceStatus("openrouter") === "configured" ? "default" : "secondary"}
+                        className="ml-2"
+                      >
+                        {getServiceStatus("openrouter") === "configured" ? "✓" : "○"}
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Groq API Key */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="groq-key">Groq API Key</Label>
+                <div className="flex items-center gap-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => window.open("https://console.groq.com/keys", "_blank")}
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Get Groq API Key</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <Button variant="ghost" size="sm" onClick={() => setShowGroqKey(!showGroqKey)}>
+                    {showGroqKey ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                  </Button>
+                </div>
               </div>
-            ) : (
-              <>
-                {/* Service Selection */}
-                <div className="space-y-2">
-                  <Label htmlFor="service-select">AI Service</Label>
-                  <Select value={selectedService} onValueChange={handleServiceChange}>
-                    <SelectTrigger id="service-select">
-                      <SelectValue placeholder="Select AI service" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="groq">
-                        <div className="flex items-center justify-between w-full">
-                          <span>Groq</span>
-                          <Badge
-                            variant={getServiceStatus("groq") === "configured" ? "default" : "secondary"}
-                            className="ml-2"
-                          >
-                            {getServiceStatus("groq") === "configured" ? "✓" : "○"}
-                          </Badge>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="openrouter">
-                        <div className="flex items-center justify-between w-full">
-                          <span>OpenRouter</span>
-                          <Badge
-                            variant={getServiceStatus("openrouter") === "configured" ? "default" : "secondary"}
-                            className="ml-2"
-                          >
-                            {getServiceStatus("openrouter") === "configured" ? "✓" : "○"}
-                          </Badge>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <Input
+                id="groq-key"
+                type={showGroqKey ? "text" : "password"}
+                placeholder="gsk_..."
+                value={groqApiKey}
+                onChange={(e) => setGroqApiKey(e.target.value)}
+                className={selectedService === "groq" ? "ring-2 ring-overthinkr-200" : ""}
+              />
+              {groqApiKey && !showGroqKey && (
+                <p className="text-xs text-muted-foreground">Key: {maskApiKey(groqApiKey)}</p>
+              )}
+            </div>
 
-                {/* Groq API Key */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="groq-key">Groq API Key</Label>
-                    <div className="flex items-center gap-2">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => window.open("https://console.groq.com/keys", "_blank")}
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Get Groq API Key</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <Button variant="ghost" size="sm" onClick={() => setShowGroqKey(!showGroqKey)}>
-                        {showGroqKey ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                      </Button>
-                    </div>
-                  </div>
-                  <Input
-                    id="groq-key"
-                    type={showGroqKey ? "text" : "password"}
-                    placeholder="gsk_..."
-                    value={groqApiKey}
-                    onChange={(e) => setGroqApiKey(e.target.value)}
-                    className={selectedService === "groq" ? "ring-2 ring-overthinkr-200" : ""}
-                  />
-                  {groqApiKey && !showGroqKey && (
-                    <p className="text-xs text-muted-foreground">Key: {maskApiKey(groqApiKey)}</p>
-                  )}
+            {/* OpenRouter API Key */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="openrouter-key">OpenRouter API Key</Label>
+                <div className="flex items-center gap-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => window.open("https://openrouter.ai/keys", "_blank")}
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Get OpenRouter API Key</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <Button variant="ghost" size="sm" onClick={() => setShowOpenRouterKey(!showOpenRouterKey)}>
+                    {showOpenRouterKey ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                  </Button>
                 </div>
+              </div>
+              <Input
+                id="openrouter-key"
+                type={showOpenRouterKey ? "text" : "password"}
+                placeholder="sk-or-v1-..."
+                value={openRouterApiKey}
+                onChange={(e) => setOpenRouterApiKey(e.target.value)}
+                className={selectedService === "openrouter" ? "ring-2 ring-overthinkr-200" : ""}
+              />
+              {openRouterApiKey && !showOpenRouterKey && (
+                <p className="text-xs text-muted-foreground">Key: {maskApiKey(openRouterApiKey)}</p>
+              )}
+            </div>
 
-                {/* OpenRouter API Key */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="openrouter-key">OpenRouter API Key</Label>
-                    <div className="flex items-center gap-2">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => window.open("https://openrouter.ai/keys", "_blank")}
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Get OpenRouter API Key</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <Button variant="ghost" size="sm" onClick={() => setShowOpenRouterKey(!showOpenRouterKey)}>
-                        {showOpenRouterKey ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                      </Button>
-                    </div>
-                  </div>
-                  <Input
-                    id="openrouter-key"
-                    type={showOpenRouterKey ? "text" : "password"}
-                    placeholder="sk-or-v1-..."
-                    value={openRouterApiKey}
-                    onChange={(e) => setOpenRouterApiKey(e.target.value)}
-                    className={selectedService === "openrouter" ? "ring-2 ring-overthinkr-200" : ""}
-                  />
-                  {openRouterApiKey && !showOpenRouterKey && (
-                    <p className="text-xs text-muted-foreground">Key: {maskApiKey(openRouterApiKey)}</p>
-                  )}
+            {/* Service Info */}
+            <div className="bg-muted/50 rounded-lg p-3 text-sm">
+              {selectedService === "groq" && (
+                <div>
+                  <p className="font-medium">Groq</p>
+                  <p className="text-muted-foreground">Fast inference with Llama models. Free tier available.</p>
                 </div>
-
-                {/* Service Info */}
-                <div className="bg-muted/50 rounded-lg p-3 text-sm">
-                  {selectedService === "groq" && (
-                    <div>
-                      <p className="font-medium">Groq</p>
-                      <p className="text-muted-foreground">Fast inference with Llama models. Free tier available.</p>
-                    </div>
-                  )}
-                  {selectedService === "openrouter" && (
-                    <div>
-                      <p className="font-medium">OpenRouter</p>
-                      <p className="text-muted-foreground">
-                        Access to multiple AI models including GPT-4, Claude, and more.
-                      </p>
-                    </div>
-                  )}
+              )}
+              {selectedService === "openrouter" && (
+                <div>
+                  <p className="font-medium">OpenRouter</p>
+                  <p className="text-muted-foreground">
+                    Access to multiple AI models including GPT-4, Claude, and more.
+                  </p>
                 </div>
+              )}
+            </div>
 
-                {!isConfigured() && (
-                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
-                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                      Please configure an API key for the selected service to start chatting.
-                    </p>
-                  </div>
-                )}
-              </>
+            {!isConfigured() && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  Please configure an API key for the selected service to start chatting.
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>
