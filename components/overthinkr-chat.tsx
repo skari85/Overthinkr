@@ -8,12 +8,14 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useEffect, useRef, useState } from "react"
 import { Message } from "@/components/message"
 import { TypingIndicator } from "@/components/typing-indicator"
-import { RefreshCw, Send, Trash2 } from "lucide-react"
+import { RefreshCw, Send, Trash2, Share2 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAPI } from "@/contexts/api-context"
 import { APIConfig } from "@/components/api-config"
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { ShareDialog } from "@/components/share-dialog"
+import { toast } from "@/components/ui/use-toast"
 
 export default function OverthinkrChat() {
   const { selectedService, getActiveApiKey, isConfigured } = useAPI()
@@ -26,6 +28,7 @@ export default function OverthinkrChat() {
   })
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [newMessageId, setNewMessageId] = useState<string | null>(null)
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
 
   const handleClearChat = () => {
     setMessages([])
@@ -38,6 +41,18 @@ export default function OverthinkrChat() {
         reload() // Reloads the last message
       }
     }
+  }
+
+  const handleShare = () => {
+    if (messages.length === 0) {
+      toast({
+        title: "Nothing to share",
+        description: "Start a conversation first before sharing.",
+        variant: "destructive",
+      })
+      return
+    }
+    setShareDialogOpen(true)
   }
 
   useEffect(() => {
@@ -134,6 +149,26 @@ export default function OverthinkrChat() {
                     <Button
                       variant="outline"
                       size="icon"
+                      onClick={handleShare}
+                      disabled={messages.length === 0}
+                      className="h-9 w-9"
+                    >
+                      <Share2 className="h-4 w-4" />
+                      <span className="sr-only">Share Conversation</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Share conversation</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
                       onClick={handleRerun}
                       disabled={isLoading || messages.length === 0}
                       className="h-9 w-9"
@@ -186,6 +221,7 @@ export default function OverthinkrChat() {
           <APIConfig />
         </div>
       </div>
+      <ShareDialog open={shareDialogOpen} onOpenChange={setShareDialogOpen} messages={messages} />
     </div>
   )
 }
