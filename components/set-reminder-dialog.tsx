@@ -1,178 +1,190 @@
 "use client"
 
-import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CalendarIcon, Clock, BellRing } from "lucide-react"
+import type React from "react"
+
+import { useState, useEffect } from "react"
 import { format } from "date-fns"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CalendarIcon, Clock, BellRing } from "lucide-react" // Added BellRing for consistency
+import { v4 as uuidv4 } from "uuid" // Assuming uuid is available for unique IDs
+
 import { cn } from "@/lib/utils"
-import { saveReminder, requestNotificationPermission } from "@/lib/notification-utils"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
-import { v4 as uuidv4 } from "uuid" // For unique IDs
+import { requestNotificationPermission, saveReminder, type Reminder } from "@/lib/notification-utils"
 
 interface SetReminderDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  messageContent: string
   messageId: string
+  initialMessageContent: string
+  children: React.ReactNode // To allow triggering from a button/icon
 }
 
-export function SetReminderDialog({ open, onOpenChange, messageContent, messageId }: SetReminderDialogProps) {
-  const [date, setDate] = useState<Date | undefined>(new Date())
-  const [time, setTime] = useState("09:00") // HH:MM format
-  const [preset, setPreset] = useState<string>("custom")
+export function SetReminderDialog({ messageId, initialMessageContent, children }: SetReminderDialogProps) {
+  const [open, setOpen] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
+  const [selectedTime, setSelectedTime] = useState<string>("09:00") // HH:MM format
+  const [messageContent, setMessageContent] = useState<string>(initialMessageContent)
 
-  const handlePresetChange = (value: string) => {
-    setPreset(value)
-    const now = new Date()
-    let newDate = new Date(now)
+  useEffect(() => {
+    setMessageContent(initialMessageContent)
+  }, [initialMessageContent])
 
-    switch (value) {
-      case "1h":
-        newDate.setHours(now.getHours() + 1)
-        break
-      case "1d":
-        newDate.setDate(now.getDate() + 1)
-        break
-      case "1w":
-        newDate.setDate(now.getDate() + 7)
-        break
-      case "custom":
-      default:
-        // Keep current date/time or reset to now
-        newDate = new Date()
-        break
-    }
-    setDate(newDate)
-    setTime(format(newDate, "HH:mm"))
-  }
-
-  const handleSetReminder = async () => {
-    const permission = await requestNotificationPermission()
-    if (permission !== "granted") {
-      toast({
-        title: "Notification Permission Required",
-        description: "Please grant notification permission to set reminders.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (!date || !time) {
+  const handleSaveReminder = async () => {
+    if (!selectedDate || !selectedTime || !messageContent) {
       toast({
         title: "Missing Information",
-        description: "Please select both a date and time for the reminder.",
+        description: "Please select a date and time and enter a message for your reminder.",
         variant: "destructive",
       })
       return
     }
 
-    const [hours, minutes] = time.split(":").map(Number)
-    const reminderDateTime = new Date(date)
+    // Combine date and time
+    const [hours, minutes] = selectedTime.split(":").map(Number)
+    const reminderDateTime = new Date(selectedDate)
     reminderDateTime.setHours(hours, minutes, 0, 0)
 
+    // Check if the reminder is in the past
     if (reminderDateTime.getTime() <= Date.now()) {
       toast({
         title: "Invalid Time",
-        description: "Reminder time must be in the future.",
+        description: "Please select a future date and time for your reminder.",
         variant: "destructive",
       })
       return
     }
 
-    const newReminder = {
-      id: uuidv4(),
-      messageContent: messageContent,
+    // 1. Check notification permission
+    const permission = Notification.permission
+
+    if (permission === "denied") {
+      toast({
+        title: "Notification Permission Required",
+        description:
+          "Please enable browser notifications to use 'Check-in' Reminders. You can do this in your browser settings.",
+        variant: "destructive",
+      })
+      return // Stop the process
+    }
+
+    if (permission === "default") {
+      const requestedPermission = await requestNotificationPermission()
+      if (requestedPermission !== "granted") {
+        toast({
+          title: "Notification Permission Denied",
+          description: "Notification permission was not granted. 'Check-in' Reminders will not function.",
+          variant: "destructive",
+        })
+        return // Stop the process
+      }
+    }
+
+    // 2. If permission is granted, proceed to save the reminder
+    const newReminder: Reminder = {
+      id: uuidv4(), // Generate a unique ID
+      messageContent,
       timestamp: reminderDateTime.getTime(),
       originalMessageId: messageId,
       setAt: Date.now(),
     }
-
     saveReminder(newReminder)
     toast({
       title: "Reminder Set!",
-      description: `You'll be reminded about this insight on ${format(reminderDateTime, "PPP 'at' p")}.`,
+      description: `You'll be reminded about "${messageContent}" on ${format(reminderDateTime, "PPP at hh:mm a")}.`,
     })
-    onOpenChange(false)
+    setOpen(false) // Close the dialog
+    // Reset form fields for next use
+    setSelectedDate(undefined)
+    setSelectedTime("09:00")
+    setMessageContent(initialMessageContent)
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <BellRing className="h-5 w-5" />
-            Set a Reminder
+            Set a Check-in Reminder
           </DialogTitle>
-          <DialogDescription>Get a notification to revisit this insight later.</DialogDescription>
+          <DialogDescription>Schedule a notification to remind you about this thought or insight.</DialogDescription>
         </DialogHeader>
-
         <div className="grid gap-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="preset-time">Quick Presets</Label>
-            <Select value={preset} onValueChange={handlePresetChange}>
-              <SelectTrigger id="preset-time">
-                <SelectValue placeholder="Select a preset" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="custom">Custom Date & Time</SelectItem>
-                <SelectItem value="1h">In 1 Hour</SelectItem>
-                <SelectItem value="1d">In 1 Day</SelectItem>
-                <SelectItem value="1w">In 1 Week</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="message" className="text-right">
+              Message
+            </Label>
+            <Textarea
+              id="message"
+              value={messageContent}
+              onChange={(e) => setMessageContent(e.target.value)}
+              className="col-span-3"
+              placeholder="What do you want to be reminded about?"
+            />
           </div>
-
-          {preset === "custom" && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="date">Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {date ? format(date, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="time">Time</Label>
-                <div className="relative">
-                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="time"
-                    type="time"
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-              </div>
-            </>
-          )}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="date" className="text-right">
+              Date
+            </Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-[240px] justify-start text-left font-normal col-span-3",
+                    !selectedDate && "text-muted-foreground",
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  initialFocus
+                  disabled={(date) => date < new Date()} // Disable past dates
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="time" className="text-right">
+              Time
+            </Label>
+            <div className="relative col-span-3">
+              <Input
+                id="time"
+                type="time"
+                value={selectedTime}
+                onChange={(e) => setSelectedTime(e.target.value)}
+                className="w-full"
+              />
+              <Clock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            </div>
+          </div>
         </div>
-
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSetReminder} variant="customPrimary">
+        <DialogFooter>
+          <Button type="submit" onClick={handleSaveReminder}>
             Set Reminder
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

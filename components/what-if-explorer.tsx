@@ -16,13 +16,21 @@ import { Textarea } from "@/components/ui/textarea"
 
 export default function WhatIfExplorer() {
   const { selectedService, getActiveApiKey, isConfigured } = useAPI()
+  // State to hold the model, initialized to undefined (server-safe)
+  const [modelOverride, setModelOverride] = useState<string | undefined>(undefined)
+
+  useEffect(() => {
+    // This effect runs only on the client side after the component mounts
+    setModelOverride(localStorage.getItem(`overthinkr-model-${selectedService}`) || undefined)
+  }, [selectedService]) // Re-run if selectedService changes
+
   const { messages, input, handleInputChange, handleSubmit, setMessages, reload, isLoading } = useChat({
     api: "/api/chat",
     body: {
       service: selectedService,
       apiKey: getActiveApiKey(),
       mode: "what-if", // Signal to the API that this is a "what-if" scenario
-      model: localStorage.getItem(`overthinkr-model-${selectedService}`) || undefined, // Pass selected model
+      model: modelOverride, // Use the client-side state for the model
     },
   })
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -96,6 +104,7 @@ export default function WhatIfExplorer() {
                     content={m.content}
                     role={m.role as "user" | "assistant"}
                     isNew={m.id === newMessageId}
+                    messageId={m.id}
                   />
                 ))}
 

@@ -6,6 +6,7 @@ export interface Reminder {
   timestamp: number // When the reminder should trigger
   originalMessageId: string // ID of the message it's attached to
   setAt: number // When the reminder was set
+  timeoutId?: ReturnType<typeof setTimeout> // Store timeout ID for clearing
 }
 
 export interface DailyPromptSettings {
@@ -22,7 +23,7 @@ const DAILY_PROMPT_STORAGE_KEY = "overthinkr-daily-prompt-settings"
  * @returns Promise<NotificationPermission>
  */
 export async function requestNotificationPermission(): Promise<NotificationPermission> {
-  if (!("Notification" in window)) {
+  if (typeof window === "undefined" || !("Notification" in window)) {
     toast({
       title: "Notifications Not Supported",
       description: "Your browser does not support desktop notifications.",
@@ -42,6 +43,23 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 }
 
 /**
+ * Shows a browser notification.
+ * @param title The title of the notification.
+ * @param body The body text of the notification.
+ */
+export function showNotification(title: string, body: string) {
+  if (typeof window === "undefined" || Notification.permission !== "granted") {
+    return // Cannot show notification if not in browser or permission not granted
+  }
+  new Notification(title, {
+    body: body,
+    icon: "/overthinkr-logo.png", // Path to your app icon
+    tag: "overthinkr-notification", // Group notifications
+    renotify: true, // Allow re-showing if tag is same
+  })
+}
+
+/**
  * Schedules a single reminder notification.
  * This relies on the browser tab being open. For persistent reminders, a Service Worker is needed.
  * @param reminder The reminder object to schedule.
@@ -53,6 +71,7 @@ export function scheduleReminder(reminder: Reminder) {
   if (delay <= 0) {
     console.warn("Reminder time is in the past or immediate. Triggering now.")
     showNotification("Overthinkr Reminder", reminder.messageContent)
+    removeReminder(reminder.id) // Remove after showing
     return
   }
 
@@ -65,28 +84,6 @@ export function scheduleReminder(reminder: Reminder) {
   const storedReminders = getReminders()
   const updatedReminders = storedReminders.map((r) => (r.id === reminder.id ? { ...r, timeoutId: timeoutId } : r))
   localStorage.setItem(REMINDERS_STORAGE_KEY, JSON.stringify(updatedReminders))
-}
-
-/**
- * Shows a browser notification.
- * @param title The title of the notification.
- * @param body The body text of the notification.
- */
-export function showNotification(title: string, body: string) {
-  if (Notification.permission === "granted") {
-    new Notification(title, {
-      body: body,
-      icon: "/overthinkr-logo.png", // Path to your app icon
-      tag: "overthinkr-notification", // Group notifications
-      renotify: true, // Allow re-showing if tag is same
-    })
-  } else {
-    toast({
-      title: "Notification Permission Denied",
-      description: "Please enable notifications in your browser settings to receive reminders.",
-      variant: "destructive",
-    })
-  }
 }
 
 /**
@@ -105,13 +102,14 @@ export function saveReminder(reminder: Reminder) {
  * @returns An array of Reminder objects.
  */
 export function getReminders(): Reminder[] {
-  if (typeof window === "undefined") return []
+  if (typeof window === "undefined") return [] // Ensure this runs only in the browser
+
   const data = localStorage.getItem(REMINDERS_STORAGE_KEY)
   try {
     return data ? JSON.parse(data) : []
   } catch (error) {
     console.error("Failed to parse reminders from local storage:", error)
-    localStorage.removeItem(REMINDERS_STORAGE_KEY)
+    localStorage.removeItem(REMINDERS_STORAGE_KEY) // Clear corrupted data
     return []
   }
 }
@@ -146,13 +144,14 @@ export function clearAllReminders() {
  * @returns DailyPromptSettings object.
  */
 export function getDailyPromptSettings(): DailyPromptSettings {
-  if (typeof window === "undefined") return { enabled: false, time: "09:00" }
+  if (typeof window === "undefined") return { enabled: false, time: "09:00" } // Ensure this runs only in the browser
+
   const data = localStorage.getItem(DAILY_PROMPT_STORAGE_KEY)
   try {
     return data ? JSON.parse(data) : { enabled: false, time: "09:00" }
   } catch (error) {
     console.error("Failed to parse daily prompt settings:", error)
-    localStorage.removeItem(DAILY_PROMPT_STORAGE_KEY)
+    localStorage.removeItem(DAILY_PROMPT_STORAGE_KEY) // Clear corrupted data
     return { enabled: false, time: "09:00" }
   }
 }
@@ -162,16 +161,19 @@ export function getDailyPromptSettings(): DailyPromptSettings {
  * @param settings DailyPromptSettings object to save.
  */
 export function saveDailyPromptSettings(settings: DailyPromptSettings) {
+  if (typeof window === "undefined") return // Ensure this runs only in the browser
   localStorage.setItem(DAILY_PROMPT_STORAGE_KEY, JSON.stringify(settings))
 }
 
 // Daily prompt logic (simplified for client-side, requires tab open)
-const dailyPromptIntervals = new Map<string, ReturnType<typeof setInterval>>()
+const dailyPromptTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
 export function startDailyPromptScheduler(settings: DailyPromptSettings) {
+  if (typeof window === "undefined") return // Ensure this runs only in the browser
+
   // Clear any existing scheduler
-  dailyPromptIntervals.forEach((intervalId) => clearInterval(intervalId))
-  dailyPromptIntervals.clear()
+  dailyPromptTimeouts.forEach((timeoutId) => clearTimeout(timeoutId))
+  dailyPromptTimeouts.clear()
 
   if (!settings.enabled) return
 
@@ -192,12 +194,11 @@ export function startDailyPromptScheduler(settings: DailyPromptSettings) {
 
     const timeoutId = setTimeout(() => {
       const currentSettings = getDailyPromptSettings()
-      // Only show if enabled and not triggered recently (e.g., within the last hour)
+      // Only show if enabled and not triggered recently (e.g., within the last 5 minutes to avoid rapid re-triggers)
       if (
         currentSettings.enabled &&
-        (!currentSettings.lastTriggered || Date.now() - currentSettings.lastTriggered > 3600000)
+        (!currentSettings.lastTriggered || Date.now() - currentSettings.lastTriggered > 5 * 60 * 1000)
       ) {
-        // 1 hour
         const prompts = [
           "What's one thing you're overthinking today?",
           "Is there a concern you can take action on today?",
@@ -213,13 +214,28 @@ export function startDailyPromptScheduler(settings: DailyPromptSettings) {
       startDailyPromptScheduler(getDailyPromptSettings())
     }, delay)
 
-    dailyPromptIntervals.set("daily-prompt", timeoutId)
+    dailyPromptTimeouts.set("daily-prompt", timeoutId)
   }
 
   scheduleNextPrompt()
 }
 
 export function stopDailyPromptScheduler() {
-  dailyPromptIntervals.forEach((intervalId) => clearInterval(intervalId))
-  dailyPromptIntervals.clear()
+  if (typeof window === "undefined") return // Ensure this runs only in the browser
+  dailyPromptTimeouts.forEach((timeoutId) => clearTimeout(timeoutId))
+  dailyPromptTimeouts.clear()
+}
+
+// Call this function on app load to schedule any pending reminders
+export function initializeReminders() {
+  const reminders = getReminders()
+  const now = Date.now()
+  reminders.forEach((reminder) => {
+    if (reminder.timestamp > now) {
+      scheduleReminder(reminder) // Use the correct function name here
+    } else {
+      // Clean up old reminders that were missed or are in the past
+      removeReminder(reminder.id) // Use removeReminder to also clear timeout
+    }
+  })
 }

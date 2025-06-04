@@ -6,26 +6,29 @@ import { Button } from "@/components/ui/button"
 import { Share2, Lightbulb } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useUserProfile } from "@/contexts/user-profile-context" // Import user profile context
+import { SetReminderDialog } from "./set-reminder-dialog" // Import the SetReminderDialog
+import React from "react" // Import React for React.memo
 
 interface MessageProps {
   content: string
   role: "user" | "assistant"
   isNew?: boolean
+  messageId: string // Added: Unique ID for the message, needed for reminders
   // New prop for sharing specific messages
   onShare?: () => void
   showShareButton?: boolean
   // New prop for setting reminders
-  onSetReminder?: () => void
   showSetReminderButton?: boolean
 }
 
-export function Message({
+export const Message = React.memo(function Message({
+  // Wrapped with React.memo
   content,
   role,
   isNew = false,
+  messageId, // Destructure the new prop
   onShare,
   showShareButton = false,
-  onSetReminder,
   showSetReminderButton = false,
 }: MessageProps) {
   const { nickname, getAvatarSrc } = useUserProfile() // Use user profile context
@@ -49,19 +52,21 @@ export function Message({
         <p className="text-sm leading-relaxed">{content}</p>
         {(showShareButton || showSetReminderButton) && (
           <div className="mt-2 flex justify-end gap-1">
-            {showSetReminderButton && onSetReminder && (
+            {showSetReminderButton && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                      onClick={onSetReminder}
-                    >
-                      <Lightbulb className="h-3 w-3" />
-                      <span className="sr-only">Set Reminder</span>
-                    </Button>
+                    {/* Wrap the button with SetReminderDialog */}
+                    <SetReminderDialog messageId={messageId} initialMessageContent={content}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                      >
+                        <Lightbulb className="h-3 w-3" />
+                        <span className="sr-only">Set Reminder</span>
+                      </Button>
+                    </SetReminderDialog>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Set a reminder for this insight</p>
@@ -102,4 +107,4 @@ export function Message({
       )}
     </div>
   )
-}
+})
