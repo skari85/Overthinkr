@@ -1,5 +1,6 @@
 import { createBrowserClient } from "@supabase/ssr"
 
-export function createClient() {
-  return createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+// Modify createClient to accept URL and key as arguments
+export function createClient(supabaseUrl: string, supabaseAnonKey: string) {
+  return createBrowserClient(supabaseUrl, supabaseAnonKey)
 }

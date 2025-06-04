@@ -7,7 +7,7 @@ import { ConditionalLayout } from "@/components/conditional-layout"
 import { APIProvider } from "@/contexts/api-context"
 import { UICustomizationProvider, type CustomFont } from "@/contexts/ui-customization-context"
 import { Toaster } from "@/components/ui/toaster"
-import { SupabaseProvider } from "@/providers/supabase-provider" // Import SupabaseProvider
+import { SupabaseProvider } from "@/providers/supabase-provider"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 const roboto = Roboto({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-roboto" })
@@ -45,6 +45,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // Fetch environment variables here in the Server Component
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -53,9 +57,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <APIProvider>
             <UICustomizationProvider>
-              <SupabaseProvider>
-                {" "}
-                {/* Wrap with SupabaseProvider */}
+              <SupabaseProvider supabaseUrl={supabaseUrl} supabaseAnonKey={supabaseAnonKey}>
                 <ConditionalLayout>{children}</ConditionalLayout>
               </SupabaseProvider>
               <Toaster />

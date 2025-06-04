@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/client" // This still uses the client.ts which gets from process.env
 import type { Session, SupabaseClient } from "@supabase/supabase-js"
 import { useRouter } from "next/navigation"
 
@@ -12,8 +12,15 @@ interface SupabaseContextType {
 
 const SupabaseContext = createContext<SupabaseContextType | undefined>(undefined)
 
-export function SupabaseProvider({ children }: { children: ReactNode }) {
-  const supabase = createClient()
+interface SupabaseProviderProps {
+  children: ReactNode
+  supabaseUrl: string
+  supabaseAnonKey: string
+}
+
+export function SupabaseProvider({ children, supabaseUrl, supabaseAnonKey }: SupabaseProviderProps) {
+  // Create the client here using the passed props
+  const supabase = createClient(supabaseUrl, supabaseAnonKey)
   const [session, setSession] = useState<Session | null>(null)
   const router = useRouter()
 
