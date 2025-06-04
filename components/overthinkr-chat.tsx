@@ -173,7 +173,9 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
               </CardTitle>
               <CardDescription>This is a shared portion of an Overthinkr conversation.</CardDescription>
             </CardHeader>
-            <CardContent className="p-4 space-y-4">
+            <CardContent className="p-4 space-y-4" aria-live="polite">
+              {" "}
+              {/* Added aria-live */}
               {sharedMessages.map((m) => (
                 <Message key={m.id} content={m.content} role={m.role as "user" | "assistant"} />
               ))}
@@ -199,7 +201,9 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
         <Card className="border-2 shadow-lg rounded-xl overflow-hidden">
           <CardContent className="p-0">
             <ScrollArea className="h-[500px] md:h-[600px]">
-              <div className="p-4 space-y-4">
+              <div className="p-4 space-y-4" aria-live="polite">
+                {" "}
+                {/* Added aria-live */}
                 {messages.length === 0 && (
                   <div className="flex flex-col items-center justify-center h-96 text-center py-10 px-4">
                     <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">Welcome to Overthinkr!</h3>
@@ -214,7 +218,6 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
                     </div>
                   </div>
                 )}
-
                 {messages.map((m, index) => (
                   <Message
                     key={m.id}
@@ -227,13 +230,11 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
                     onShare={() => handleShareSpecificMessage(m.id)}
                   />
                 ))}
-
                 {isLoading && (
                   <div className="flex items-start gap-3">
                     <TypingIndicator />
                   </div>
                 )}
-
                 <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
@@ -247,6 +248,7 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
                 placeholder={isConfigured() ? "What's on your mind?" : "Configure API key first..."}
                 onChange={handleInputChange}
                 disabled={isLoading || !isConfigured()}
+                aria-label="Your message" // Added aria-label
               />
               <TooltipProvider>
                 <Tooltip>
@@ -255,6 +257,7 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
                       type="submit"
                       disabled={isLoading || !input.trim() || !isConfigured()}
                       variant="customPrimary"
+                      aria-label="Send message" // Added aria-label
                     >
                       <Send className="h-4 w-4" />
                       <span className="sr-only">Send</span>
@@ -277,6 +280,7 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
                       onClick={handleShareAll}
                       disabled={messages.length === 0}
                       className="h-9 w-9"
+                      aria-label="Share Conversation" // Added aria-label
                     >
                       <Share2 className="h-4 w-4" />
                       <span className="sr-only">Share Conversation</span>
@@ -297,6 +301,7 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
                       onClick={handleRerun}
                       disabled={isLoading || messages.length === 0}
                       className="h-9 w-9"
+                      aria-label="Rerun Last Query" // Added aria-label
                     >
                       <RefreshCw className="h-4 w-4" />
                       <span className="sr-only">Rerun Last Query</span>
@@ -317,6 +322,7 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
                       onClick={handleClearChat}
                       disabled={isLoading || messages.length === 0}
                       className="h-9 w-9"
+                      aria-label="Clear Chat" // Added aria-label
                     >
                       <Trash2 className="h-4 w-4" />
                       <span className="sr-only">Clear Chat</span>
