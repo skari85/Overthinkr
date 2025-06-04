@@ -8,6 +8,8 @@ import { APIProvider } from "@/contexts/api-context"
 import { UICustomizationProvider, type CustomFont } from "@/contexts/ui-customization-context"
 import { Toaster } from "@/components/ui/toaster"
 import { SupabaseProvider } from "@/providers/supabase-provider"
+import { Header } from "@/components/header" // Import Header
+import { Footer } from "@/components/footer" // Import Footer
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 const roboto = Roboto({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-roboto" })
@@ -58,7 +60,9 @@ export default function RootLayout({
           <APIProvider>
             <UICustomizationProvider>
               <SupabaseProvider supabaseUrl={supabaseUrl} supabaseAnonKey={supabaseAnonKey}>
-                <ConditionalLayout>{children}</ConditionalLayout>
+                <ConditionalLayout header={<Header />} footer={<Footer />}>
+                  {children}
+                </ConditionalLayout>
               </SupabaseProvider>
               <Toaster />
             </UICustomizationProvider>
