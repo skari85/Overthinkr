@@ -12,13 +12,19 @@ import { useRouter } from "next/navigation"
 import { toast } from "@/components/ui/use-toast"
 import { Loader2 } from "lucide-react"
 
-export function AuthForm() {
+interface AuthFormProps {
+  supabaseUrl: string
+  supabaseAnonKey: string
+}
+
+export function AuthForm({ supabaseUrl, supabaseAnonKey }: AuthFormProps) {
   const [isLogin, setIsLogin] = useState(true)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
+  // Pass the props to createClient
+  const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
