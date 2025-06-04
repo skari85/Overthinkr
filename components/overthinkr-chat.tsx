@@ -11,7 +11,6 @@ import { TypingIndicator } from "@/components/typing-indicator"
 import { RefreshCw, Send, Trash2, Share2, ArrowLeft } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAPI } from "@/contexts/api-context"
-import { APIConfig } from "@/components/api-config"
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ShareDialog } from "@/components/share-dialog"
@@ -21,19 +20,44 @@ import { generateShareLink } from "@/lib/share-utils"
 import { copyToClipboard } from "@/utils/export-utils"
 import type { Message as AIMessage } from "ai"
 import Link from "next/link"
+import { APIConfig } from "@/components/api-config"
 
 interface OverthinkrChatProps {
   sharedMessages?: AIMessage[] | null
 }
 
+const LOCAL_STORAGE_CHAT_KEY = "overthinkr-chat-history"
+
 export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) {
   const { selectedService, getActiveApiKey, isConfigured } = useAPI()
+
+  // State to hold initial messages loaded from local storage
+  const [initialMessages, setInitialMessages] = useState<AIMessage[]>([])
+  const [isLoaded, setIsLoaded] = useState(false) // To ensure local storage is loaded before useChat
+
+  // Load messages from local storage on component mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedChat = localStorage.getItem(LOCAL_STORAGE_CHAT_KEY)
+      if (savedChat) {
+        try {
+          setInitialMessages(JSON.parse(savedChat))
+        } catch (e) {
+          console.error("Failed to parse saved chat history:", e)
+          localStorage.removeItem(LOCAL_STORAGE_CHAT_KEY) // Clear corrupted data
+        }
+      }
+    }
+    setIsLoaded(true)
+  }, [])
+
   const { messages, input, handleInputChange, handleSubmit, setMessages, reload, isLoading } = useChat({
     api: "/api/chat",
     body: {
       service: selectedService,
       apiKey: getActiveApiKey(),
     },
+    initialMessages: isLoaded ? initialMessages : [], // Only set initial messages once loaded
     onFinish: (message) => {
       const content = message.content.toLowerCase()
       if (content.startsWith("yep, you're overthinking")) {
@@ -43,12 +67,24 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
       }
     },
   })
+
+  // Save messages to local storage whenever the messages array changes
+  useEffect(() => {
+    if (isLoaded && messages.length > 0) {
+      localStorage.setItem(LOCAL_STORAGE_CHAT_KEY, JSON.stringify(messages))
+    } else if (isLoaded && messages.length === 0) {
+      // If messages become empty, clear local storage
+      localStorage.removeItem(LOCAL_STORAGE_CHAT_KEY)
+    }
+  }, [messages, isLoaded])
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [newMessageId, setNewMessageId] = useState<string | null>(null)
   const [shareAllDialogOpen, setShareAllDialogOpen] = useState(false)
 
   const handleClearChat = () => {
     setMessages([])
+    // Local storage is cleared by the useEffect above when messages become empty
   }
 
   const handleRerun = () => {
