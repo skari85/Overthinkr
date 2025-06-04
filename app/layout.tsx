@@ -8,8 +8,8 @@ import { APIProvider } from "@/contexts/api-context"
 import { UICustomizationProvider, type CustomFont } from "@/contexts/ui-customization-context"
 import { Toaster } from "@/components/ui/toaster"
 import { SupabaseProvider } from "@/providers/supabase-provider"
-import { Header } from "@/components/header" // Import Header
-import { Footer } from "@/components/footer" // Import Footer
+import { Header } from "@/components/header"
+import { Footer } from "@/components/footer"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 const roboto = Roboto({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-roboto" })
@@ -47,7 +47,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  // Fetch environment variables here in the Server Component
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
@@ -57,16 +56,17 @@ export default function RootLayout({
         className={`${inter.variable} ${roboto.variable} ${openSans.variable} ${lato.variable} ${montserrat.variable} ${merriweather.variable} ${robotoMono.variable}`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <APIProvider>
-            <UICustomizationProvider>
-              <SupabaseProvider supabaseUrl={supabaseUrl} supabaseAnonKey={supabaseAnonKey}>
+          {/* SupabaseProvider must wrap any component that uses useSupabase, including APIProvider */}
+          <SupabaseProvider supabaseUrl={supabaseUrl} supabaseAnonKey={supabaseAnonKey}>
+            <APIProvider>
+              <UICustomizationProvider>
                 <ConditionalLayout header={<Header />} footer={<Footer />}>
                   {children}
                 </ConditionalLayout>
-              </SupabaseProvider>
-              <Toaster />
-            </UICustomizationProvider>
-          </APIProvider>
+                <Toaster />
+              </UICustomizationProvider>
+            </APIProvider>
+          </SupabaseProvider>
         </ThemeProvider>
       </body>
     </html>
