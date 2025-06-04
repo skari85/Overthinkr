@@ -16,6 +16,7 @@ import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ShareDialog } from "@/components/share-dialog"
 import { toast } from "@/components/ui/use-toast"
+import { saveClassification } from "@/lib/analytics-utils" // Import the new utility
 
 export default function OverthinkrChat() {
   const { selectedService, getActiveApiKey, isConfigured } = useAPI()
@@ -24,6 +25,15 @@ export default function OverthinkrChat() {
     body: {
       service: selectedService,
       apiKey: getActiveApiKey(),
+    },
+    onFinish: (message) => {
+      // Parse the AI's response to determine classification
+      const content = message.content.toLowerCase()
+      if (content.startsWith("yep, you're overthinking")) {
+        saveClassification("overthinking")
+      } else if (content.startsWith("nah, this might be valid")) {
+        saveClassification("valid")
+      }
     },
   })
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -56,7 +66,7 @@ export default function OverthinkrChat() {
   }
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    messagesEndRef.current?.scrollInView({ behavior: "smooth" })
 
     // Set the newest message ID for animation
     if (messages.length > 0) {

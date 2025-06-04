@@ -1,6 +1,7 @@
 import { ThemeToggle } from "@/components/theme-toggle"
 import Link from "next/link"
 import Image from "next/image"
+import { BarChart3 } from "lucide-react" // Import the icon
 
 export function Header() {
   return (
@@ -16,6 +17,13 @@ export function Header() {
           />
         </Link>
         <div className="flex items-center gap-4">
+          <Link
+            href="/analytics"
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors flex items-center gap-1"
+          >
+            <BarChart3 className="h-5 w-5" />
+            <span className="hidden sm:inline">Analytics</span>
+          </Link>
           <ThemeToggle />
         </div>
       </div>
