@@ -30,6 +30,10 @@
     --custom-primary-color-foreground: 210 40% 98%; /* White for text on custom primary */
     --custom-primary-color-hover: #2a3af7; /* Slightly darker for hover */
     --custom-primary-color-active: #2330e2; /* Even darker for active */
+
+    /* New: Font size and line height */
+    --custom-font-size: 16px;
+    --custom-line-height: 1.5;
   }
 
   .dark {
@@ -68,6 +72,8 @@
   body {
     @apply bg-background text-foreground transition-colors;
     font-family: var(--font-sans); /* Default font family */
+    font-size: var(--custom-font-size); /* Apply custom font size */
+    line-height: var(--custom-line-height); /* Apply custom line height */
   }
 
   /* Accessibility: Reduced Motion */

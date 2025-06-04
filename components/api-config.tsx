@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect } from "react"
+
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,8 +11,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Badge } from "@/components/ui/badge"
 import { useAPI, type AIService } from "@/contexts/api-context"
-import { Settings, ChevronDown, ChevronUp, Key, ExternalLink, Eye, EyeOff } from "lucide-react"
+import { Settings, ChevronDown, ChevronUp, Key, ExternalLink, Eye, EyeOff, Cpu } from "lucide-react" // Import Cpu icon
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+
+// Define available models for each service
+const availableModels: Record<AIService, { id: string; name: string }[]> = {
+  groq: [
+    { id: "llama3-8b-8192", name: "Llama 3 8B" },
+    { id: "llama3-70b-8192", name: "Llama 3 70B" },
+    { id: "mixtral-8x7b-32768", name: "Mixtral 8x7B" },
+  ],
+  openrouter: [
+    { id: "meta-llama/llama-3.1-8b-instruct:free", name: "Llama 3.1 8B (Free)" },
+    { id: "openai/gpt-4o", name: "GPT-4o" },
+    { id: "anthropic/claude-3-opus", name: "Claude 3 Opus" },
+    { id: "google/gemini-pro", name: "Gemini Pro" },
+  ],
+}
 
 export function APIConfig() {
   const {
@@ -26,9 +43,30 @@ export function APIConfig() {
   const [isOpen, setIsOpen] = useState(false)
   const [showGroqKey, setShowGroqKey] = useState(false)
   const [showOpenRouterKey, setShowOpenRouterKey] = useState(false)
+  const [selectedModel, setSelectedModel] = useState<string>(
+    localStorage.getItem(`overthinkr-model-${selectedService}`) || availableModels[selectedService][0].id,
+  )
+
+  // Update selected model when service changes
+  useEffect(() => {
+    const savedModel = localStorage.getItem(`overthinkr-model-${selectedService}`)
+    setSelectedModel(savedModel || availableModels[selectedService][0].id)
+  }, [selectedService])
+
+  // Save selected model to local storage
+  useEffect(() => {
+    localStorage.setItem(`overthinkr-model-${selectedService}`, selectedModel)
+  }, [selectedModel, selectedService])
 
   const handleServiceChange = (service: AIService) => {
     setSelectedService(service)
+    // Reset model to default for the new service if no saved model exists
+    const savedModel = localStorage.getItem(`overthinkr-model-${service}`)
+    setSelectedModel(savedModel || availableModels[service][0].id)
+  }
+
+  const handleModelChange = (modelId: string) => {
+    setSelectedModel(modelId)
   }
 
   const getServiceStatus = (service: AIService) => {
@@ -101,6 +139,27 @@ export function APIConfig() {
                   </SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Model Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="model-select" className="flex items-center gap-2">
+                <Cpu className="h-4 w-4" />
+                AI Model
+              </Label>
+              <Select value={selectedModel} onValueChange={handleModelChange} disabled={!isConfigured()}>
+                <SelectTrigger id="model-select">
+                  <SelectValue placeholder="Select AI model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableModels[selectedService].map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      {model.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">Choose the specific AI model to power your conversations.</p>
             </div>
 
             {/* Groq API Key */}

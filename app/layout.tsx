@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { ConditionalLayout } from "@/components/conditional-layout"
 import { APIProvider } from "@/contexts/api-context"
 import { UICustomizationProvider, type CustomFont } from "@/contexts/ui-customization-context"
+import { UserProfileProvider } from "@/contexts/user-profile-context" // Import new context
 import { Toaster } from "@/components/ui/toaster"
 import { Header } from "@/components/header" // Import Header
 import { Footer } from "@/components/footer" // Import Footer
@@ -56,10 +57,14 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <APIProvider>
             <UICustomizationProvider>
-              <ConditionalLayout header={<Header />} footer={<Footer />}>
-                {children}
-              </ConditionalLayout>
-              <Toaster />
+              <UserProfileProvider>
+                {" "}
+                {/* New: Wrap with UserProfileProvider */}
+                <ConditionalLayout header={<Header />} footer={<Footer />}>
+                  {children}
+                </ConditionalLayout>
+                <Toaster />
+              </UserProfileProvider>
             </UICustomizationProvider>
           </APIProvider>
         </ThemeProvider>

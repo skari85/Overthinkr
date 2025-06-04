@@ -3,13 +3,13 @@ import { createGroq } from "@ai-sdk/groq"
 import { createOpenAI } from "@ai-sdk/openai"
 
 export async function POST(req: Request) {
-  const { messages, service, apiKey, mode } = await req.json() // Destructure 'mode'
+  const { messages, service, apiKey, mode, model: selectedModelId } = await req.json() // Destructure 'mode' and 'model'
 
   if (!apiKey) {
     return new Response("API key is required", { status: 400 })
   }
 
-  let model
+  let modelInstance
   let systemPrompt: string
 
   // Determine system prompt based on mode
@@ -46,19 +46,19 @@ Keep responses concise and focused on practical guidance.`
       const groqClient = createGroq({
         apiKey: apiKey,
       })
-      model = groqClient("llama3-8b-8192")
+      modelInstance = groqClient(selectedModelId || "llama3-8b-8192") // Use selected model or default
     } else if (service === "openrouter") {
       const openRouterClient = createOpenAI({
         apiKey: apiKey,
         baseURL: "https://openrouter.ai/api/v1",
       })
-      model = openRouterClient("meta-llama/llama-3.1-8b-instruct:free")
+      modelInstance = openRouterClient(selectedModelId || "meta-llama/llama-3.1-8b-instruct:free") // Use selected model or default
     } else {
       return new Response("Invalid service", { status: 400 })
     }
 
     const result = await streamText({
-      model,
+      model: modelInstance,
       system: systemPrompt, // Use the determined system prompt
       messages,
     })

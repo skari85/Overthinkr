@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useEffect, useRef, useState } from "react"
 import { Message } from "@/components/message"
 import { TypingIndicator } from "@/components/typing-indicator"
-import { RefreshCw, Send, Trash2, Share2, ArrowLeft } from "lucide-react"
+import { RefreshCw, Send, Trash2, Share2, ArrowLeft, Lightbulb, Search } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAPI } from "@/contexts/api-context"
 import { AlertCircle } from "lucide-react"
@@ -22,6 +22,9 @@ import { copyToClipboard } from "@/utils/export-utils"
 import type { Message as AIMessage } from "ai"
 import Link from "next/link"
 import { APIConfig } from "@/components/api-config"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SetReminderDialog } from "@/components/set-reminder-dialog" // Import new reminder dialog
+import { getReminders, scheduleReminder } from "@/lib/notification-utils" // Import notification utils
 
 interface OverthinkrChatProps {
   sharedMessages?: AIMessage[] | null
@@ -35,6 +38,11 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
   // State to hold initial messages loaded from local storage
   const [initialMessages, setInitialMessages] = useState<AIMessage[]>([])
   const [isLoaded, setIsLoaded] = useState(false) // To ensure local storage is loaded before useChat
+  const [searchTerm, setSearchTerm] = useState("")
+  const [filterClassification, setFilterClassification] = useState<"all" | "overthinking" | "valid">("all")
+  const [isReminderDialogOpen, setIsReminderDialogOpen] = useState(false)
+  const [reminderMessageContent, setReminderMessageContent] = useState("")
+  const [reminderMessageId, setReminderMessageId] = useState("")
 
   // Load messages from local storage on component mount
   useEffect(() => {
@@ -48,6 +56,18 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
           localStorage.removeItem(LOCAL_STORAGE_CHAT_KEY) // Clear corrupted data
         }
       }
+      // Re-schedule any pending reminders on load
+      const pendingReminders = getReminders()
+      pendingReminders.forEach((reminder) => {
+        if (reminder.timestamp > Date.now()) {
+          scheduleReminder(reminder)
+        } else {
+          // If reminder is in the past, show it immediately or remove it
+          // For simplicity, we'll just remove it if it's already passed and not shown
+          // A more robust solution would check if it was already shown
+          // removeReminder(reminder.id);
+        }
+      })
     }
     setIsLoaded(true)
   }, [])
@@ -57,6 +77,7 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
     body: {
       service: selectedService,
       apiKey: getActiveApiKey(),
+      model: localStorage.getItem(`overthinkr-model-${selectedService}`) || undefined, // Pass selected model
     },
     initialMessages: isLoaded ? initialMessages : [], // Only set initial messages once loaded
     onFinish: (message) => {
@@ -155,6 +176,12 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
     }
   }
 
+  const handleSetReminder = (content: string, id: string) => {
+    setReminderMessageContent(content)
+    setReminderMessageId(id)
+    setIsReminderDialogOpen(true)
+  }
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
 
@@ -207,6 +234,40 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
     <div className="container mx-auto py-6 px-4 md:py-10">
       <div className="mx-auto max-w-3xl">
         <Card className="border-2 shadow-lg rounded-xl overflow-hidden">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Lightbulb className="h-5 w-5" />
+              Overthinkr Chat
+            </CardTitle>
+            <CardDescription>
+              Describe your problem, and I'll help you figure out if you're overthinking it.
+            </CardDescription>
+            <div className="flex flex-col sm:flex-row gap-2 mt-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search chat history..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select
+                value={filterClassification}
+                onValueChange={(value: "all" | "overthinking" | "valid") => setFilterClassification(value)}
+              >
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Filter by classification" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Classifications</SelectItem>
+                  <SelectItem value="overthinking">Yep, overthinking</SelectItem>
+                  <SelectItem value="valid">Nah, valid concern</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
           <CardContent className="p-0">
             <ScrollArea className="h-[500px] md:h-[600px]">
               <div className="p-4 space-y-4">
@@ -225,18 +286,38 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
                   </div>
                 )}
 
-                {messages.map((m, index) => (
-                  <Message
-                    key={m.id}
-                    content={m.content}
-                    role={m.role as "user" | "assistant"}
-                    isNew={m.id === newMessageId}
-                    // Show share button only for AI messages that are not the last message (if loading)
-                    // and if there's a user message before it to form a pair
-                    showShareButton={m.role === "assistant" && !isLoading && index > 0}
-                    onShare={() => handleShareSpecificMessage(m.id)}
-                  />
-                ))}
+                {
+                  // Apply filtering logic
+                  (() => {
+                    const filteredMessages = messages.filter((m) => {
+                      const contentMatches = searchTerm
+                        ? m.content.toLowerCase().includes(searchTerm.toLowerCase())
+                        : true
+
+                      const classificationMatches =
+                        filterClassification === "all" ||
+                        (filterClassification === "overthinking" &&
+                          m.content.toLowerCase().startsWith("yep, you're overthinking")) ||
+                        (filterClassification === "valid" &&
+                          m.content.toLowerCase().startsWith("nah, this might be valid"))
+
+                      return contentMatches && classificationMatches
+                    })
+
+                    return filteredMessages.map((m, index) => (
+                      <Message
+                        key={m.id}
+                        content={m.content}
+                        role={m.role as "user" | "assistant"}
+                        isNew={m.id === newMessageId}
+                        showShareButton={m.role === "assistant" && !isLoading && index > 0}
+                        onShare={() => handleShareSpecificMessage(m.id)}
+                        showSetReminderButton={m.role === "assistant" && !isLoading} // Show reminder button for AI messages
+                        onSetReminder={() => handleSetReminder(m.content, m.id)}
+                      />
+                    ))
+                  })()
+                }
 
                 {isLoading && (
                   <div className="flex items-start gap-3">
@@ -357,6 +438,12 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
         </div>
       </div>
       <ShareDialog open={shareAllDialogOpen} onOpenChange={setShareAllDialogOpen} messages={messages} />
+      <SetReminderDialog
+        open={isReminderDialogOpen}
+        onOpenChange={setIsReminderDialogOpen}
+        messageContent={reminderMessageContent}
+        messageId={reminderMessageId}
+      />
     </div>
   )
 }
