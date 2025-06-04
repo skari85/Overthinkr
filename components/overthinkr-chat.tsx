@@ -3,52 +3,165 @@
 import { useChat } from "ai/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useEffect, useRef, useState } from "react"
 import { Message } from "@/components/message"
 import { TypingIndicator } from "@/components/typing-indicator"
-import { RefreshCw, Send, Trash2 } from "lucide-react"
+import { RefreshCw, Send, Trash2, Share2, ArrowLeft } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAPI } from "@/contexts/api-context"
-import { APIConfig } from "@/components/api-config"
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { ShareDialog } from "@/components/share-dialog"
+import { toast } from "@/components/ui/use-toast"
+import { saveClassification } from "@/lib/analytics-utils"
+import { checkAndUnlockAchievements } from "@/lib/achievements-utils" // Import achievement utility
+import { generateShareLink } from "@/lib/share-utils"
+import { copyToClipboard } from "@/utils/export-utils"
+import type { Message as AIMessage } from "ai"
+import Link from "next/link"
+import { APIConfig } from "@/components/api-config"
 
-export default function OverthinkrChat() {
+interface OverthinkrChatProps {
+  sharedMessages?: AIMessage[] | null
+}
+
+const LOCAL_STORAGE_CHAT_KEY = "overthinkr-chat-history"
+
+export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) {
   const { selectedService, getActiveApiKey, isConfigured } = useAPI()
+
+  // State to hold initial messages loaded from local storage
+  const [initialMessages, setInitialMessages] = useState<AIMessage[]>([])
+  const [isLoaded, setIsLoaded] = useState(false) // To ensure local storage is loaded before useChat
+
+  // Load messages from local storage on component mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedChat = localStorage.getItem(LOCAL_STORAGE_CHAT_KEY)
+      if (savedChat) {
+        try {
+          setInitialMessages(JSON.parse(savedChat))
+        } catch (e) {
+          console.error("Failed to parse saved chat history:", e)
+          localStorage.removeItem(LOCAL_STORAGE_CHAT_KEY) // Clear corrupted data
+        }
+      }
+    }
+    setIsLoaded(true)
+  }, [])
+
   const { messages, input, handleInputChange, handleSubmit, setMessages, reload, isLoading } = useChat({
     api: "/api/chat",
     body: {
       service: selectedService,
       apiKey: getActiveApiKey(),
     },
+    initialMessages: isLoaded ? initialMessages : [], // Only set initial messages once loaded
+    onFinish: (message) => {
+      const content = message.content.toLowerCase()
+      if (content.startsWith("yep, you're overthinking")) {
+        saveClassification("overthinking")
+      } else if (content.startsWith("nah, this might be valid")) {
+        saveClassification("valid")
+      }
+      // Check for newly unlocked achievements after classification is saved
+      const newlyUnlocked = checkAndUnlockAchievements()
+      newlyUnlocked.forEach((ach) => {
+        toast({
+          title: `Achievement Unlocked: ${ach.name}!`,
+          description: ach.description,
+          duration: 5000,
+        })
+      })
+    },
   })
+
+  // Save messages to local storage whenever the messages array changes
+  useEffect(() => {
+    if (isLoaded && messages.length > 0) {
+      localStorage.setItem(LOCAL_STORAGE_CHAT_KEY, JSON.stringify(messages))
+    } else if (isLoaded && messages.length === 0) {
+      // If messages become empty, clear local storage
+      localStorage.removeItem(LOCAL_STORAGE_CHAT_KEY)
+    }
+  }, [messages, isLoaded])
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [newMessageId, setNewMessageId] = useState<string | null>(null)
+  const [shareAllDialogOpen, setShareAllDialogOpen] = useState(false)
 
   const handleClearChat = () => {
     setMessages([])
+    // Local storage is cleared by the useEffect above when messages become empty
   }
 
   const handleRerun = () => {
     if (messages.length > 0) {
       const lastUserMessage = messages.filter((m) => m.role === "user").pop()
       if (lastUserMessage) {
-        reload() // Reloads the last message
+        reload()
       }
+    }
+  }
+
+  const handleShareAll = () => {
+    if (messages.length === 0) {
+      toast({
+        title: "Nothing to share",
+        description: "Start a conversation first before sharing.",
+        variant: "destructive",
+      })
+      return
+    }
+    setShareAllDialogOpen(true)
+  }
+
+  const handleShareSpecificMessage = async (messageId: string) => {
+    const messageIndex = messages.findIndex((m) => m.id === messageId)
+    if (messageIndex === -1) return
+
+    // Find the user's question that led to this AI reply
+    let startIndex = messageIndex
+    while (startIndex >= 0 && messages[startIndex].role !== "user") {
+      startIndex--
+    }
+    if (startIndex < 0) startIndex = messageIndex // Fallback if no user message found before AI reply
+
+    const messagesToShare = messages.slice(startIndex, messageIndex + 1)
+    const shareLink = generateShareLink(messagesToShare)
+
+    if (shareLink) {
+      const success = await copyToClipboard(shareLink)
+      if (success) {
+        toast({
+          title: "Share link copied!",
+          description: "The link to this conversation snippet has been copied to your clipboard.",
+        })
+      } else {
+        toast({
+          title: "Failed to copy link",
+          description: "Could not copy the share link. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } else {
+      toast({
+        title: "Failed to generate link",
+        description: "Could not generate a shareable link for this message.",
+        variant: "destructive",
+      })
     }
   }
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
 
-    // Set the newest message ID for animation
     if (messages.length > 0) {
       const newestMessage = messages[messages.length - 1]
       setNewMessageId(newestMessage.id)
 
-      // Clear the newest message ID after animation
       const timer = setTimeout(() => {
         setNewMessageId(null)
       }, 1000)
@@ -57,6 +170,39 @@ export default function OverthinkrChat() {
     }
   }, [messages])
 
+  // If sharedMessages are provided, render only them
+  if (sharedMessages) {
+    return (
+      <div className="container mx-auto py-6 px-4 md:py-10">
+        <div className="mx-auto max-w-3xl">
+          <Card className="border-2 shadow-lg rounded-xl overflow-hidden">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Share2 className="h-5 w-5" />
+                Shared Conversation Snippet
+              </CardTitle>
+              <CardDescription>This is a shared portion of an Overthinkr conversation.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 space-y-4">
+              {sharedMessages.map((m) => (
+                <Message key={m.id} content={m.content} role={m.role as "user" | "assistant"} />
+              ))}
+            </CardContent>
+            <div className="border-t p-4 flex justify-center">
+              <Link href="/chat" passHref>
+                <Button variant="customPrimary">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Go to Full Chat
+                </Button>
+              </Link>
+            </div>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  // Default chat view
   return (
     <div className="container mx-auto py-6 px-4 md:py-10">
       <div className="mx-auto max-w-3xl">
@@ -79,12 +225,15 @@ export default function OverthinkrChat() {
                   </div>
                 )}
 
-                {messages.map((m) => (
+                {messages.map((m, index) => (
                   <Message
                     key={m.id}
                     content={m.content}
                     role={m.role as "user" | "assistant"}
                     isNew={m.id === newMessageId}
+                    // Show share button only for AI messages that are not the last message (if loading)
+                    showShareButton={m.role === "assistant" && !isLoading && index > 0}
+                    onShare={() => handleShareSpecificMessage(m.id)}
                   />
                 ))}
 
@@ -114,7 +263,7 @@ export default function OverthinkrChat() {
                     <Button
                       type="submit"
                       disabled={isLoading || !input.trim() || !isConfigured()}
-                      className="bg-overthinkr-600 hover:bg-overthinkr-700"
+                      variant="customPrimary"
                     >
                       <Send className="h-4 w-4" />
                       <span className="sr-only">Send</span>
@@ -128,6 +277,26 @@ export default function OverthinkrChat() {
             </form>
 
             <div className="flex w-full justify-end gap-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleShareAll}
+                      disabled={messages.length === 0}
+                      className="h-9 w-9"
+                    >
+                      <Share2 className="h-4 w-4" />
+                      <span className="sr-only">Share Conversation</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Share entire conversation</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -186,6 +355,7 @@ export default function OverthinkrChat() {
           <APIConfig />
         </div>
       </div>
+      <ShareDialog open={shareAllDialogOpen} onOpenChange={setShareAllDialogOpen} messages={messages} />
     </div>
   )
 }
