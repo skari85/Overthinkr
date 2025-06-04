@@ -1,3 +1,5 @@
+export type ExportFormat = "text" | "json" | "markdown"
+
 export interface AnalyticsEntry {
   timestamp: number // Unix timestamp
   classification: "overthinking" | "valid"
@@ -43,4 +45,21 @@ export function getAnalyticsData(): AnalyticsEntry[] {
 export function clearAnalyticsData() {
   if (typeof window === "undefined") return // Ensure this runs only in the browser
   localStorage.removeItem(LOCAL_STORAGE_KEY)
+}
+
+/**
+ * Retrieves summarized analytics metrics.
+ * @returns An object containing total conversations, overthinking count, and valid concern count.
+ */
+export function getAnalyticsMetrics() {
+  const data = getAnalyticsData()
+  const totalConversations = data.length
+  const overthinkingCount = data.filter((entry) => entry.classification === "overthinking").length
+  const validCount = data.filter((entry) => entry.classification === "valid").length
+
+  return {
+    totalConversations,
+    overthinkingCount,
+    validCount,
+  }
 }

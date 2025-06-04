@@ -43,7 +43,6 @@ export function Message({ content, role, isNew = false, onShare, showShareButton
                     size="icon"
                     className="h-6 w-6 text-muted-foreground hover:text-foreground"
                     onClick={onShare}
-                    aria-label="Share this message" // Added aria-label for screen readers
                   >
                     <Share2 className="h-3 w-3" />
                     <span className="sr-only">Share this message</span>
@@ -59,7 +58,7 @@ export function Message({ content, role, isNew = false, onShare, showShareButton
       </div>
       {role === "user" && (
         <Avatar className="h-8 w-8 border bg-white dark:bg-gray-800 shadow-sm">
-          <AvatarImage src="/placeholder.svg?height=32&width=32" alt="User Avatar" /> {/* Added alt text */}
+          <AvatarImage src="/placeholder.svg?height=32&width=32" alt="You" />
           <AvatarFallback className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">You</AvatarFallback>
         </Avatar>
       )}

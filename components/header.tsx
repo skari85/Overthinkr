@@ -1,7 +1,7 @@
 import { ThemeToggle } from "@/components/theme-toggle"
 import Link from "next/link"
 import Image from "next/image"
-import { BarChart3, Palette, Lightbulb } from "lucide-react"
+import { BarChart3, Palette, Lightbulb, Trophy } from "lucide-react" // Import Trophy icon
 
 export function Header() {
   return (
@@ -23,6 +23,13 @@ export function Header() {
           >
             <BarChart3 className="h-5 w-5" />
             <span className="hidden sm:inline">Analytics</span>
+          </Link>
+          <Link
+            href="/achievements" // New link for Achievements
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors flex items-center gap-1"
+          >
+            <Trophy className="h-5 w-5" />
+            <span className="hidden sm:inline">Achievements</span>
           </Link>
           <Link
             href="/customize"

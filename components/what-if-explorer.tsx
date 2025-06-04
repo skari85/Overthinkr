@@ -71,9 +71,7 @@ export default function WhatIfExplorer() {
           </CardHeader>
           <CardContent className="p-0">
             <ScrollArea className="h-[500px] md:h-[600px]">
-              <div className="p-4 space-y-4" aria-live="polite">
-                {" "}
-                {/* Added aria-live */}
+              <div className="p-4 space-y-4">
                 {messages.length === 0 && (
                   <div className="flex flex-col items-center justify-center h-96 text-center py-10 px-4">
                     <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">
@@ -90,6 +88,7 @@ export default function WhatIfExplorer() {
                     </div>
                   </div>
                 )}
+
                 {messages.map((m) => (
                   <Message
                     key={m.id}
@@ -98,11 +97,13 @@ export default function WhatIfExplorer() {
                     isNew={m.id === newMessageId}
                   />
                 ))}
+
                 {isLoading && (
                   <div className="flex items-start gap-3">
                     <TypingIndicator />
                   </div>
                 )}
+
                 <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
@@ -117,7 +118,6 @@ export default function WhatIfExplorer() {
                 onChange={handleInputChange}
                 disabled={isLoading || !isConfigured()}
                 rows={1}
-                aria-label="Describe your 'what if' scenario" // Added aria-label
               />
               <TooltipProvider>
                 <Tooltip>
@@ -126,7 +126,6 @@ export default function WhatIfExplorer() {
                       type="submit"
                       disabled={isLoading || !input.trim() || !isConfigured()}
                       variant="customPrimary"
-                      aria-label="Analyze scenario" // Added aria-label
                     >
                       <Send className="h-4 w-4" />
                       <span className="sr-only">Send</span>
@@ -149,7 +148,6 @@ export default function WhatIfExplorer() {
                       onClick={handleRerun}
                       disabled={isLoading || messages.length === 0}
                       className="h-9 w-9"
-                      aria-label="Rerun Last Query" // Added aria-label
                     >
                       <RefreshCw className="h-4 w-4" />
                       <span className="sr-only">Rerun Last Query</span>
@@ -170,7 +168,6 @@ export default function WhatIfExplorer() {
                       onClick={handleClear}
                       disabled={isLoading || messages.length === 0}
                       className="h-9 w-9"
-                      aria-label="Clear Scenario" // Added aria-label
                     >
                       <Trash2 className="h-4 w-4" />
                       <span className="sr-only">Clear Scenario</span>
