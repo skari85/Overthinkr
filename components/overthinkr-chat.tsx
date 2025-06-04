@@ -66,7 +66,7 @@ export default function OverthinkrChat() {
   }
 
   useEffect(() => {
-    messagesEndRef.current?.scrollInView({ behavior: "smooth" })
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
 
     // Set the newest message ID for animation
     if (messages.length > 0) {
