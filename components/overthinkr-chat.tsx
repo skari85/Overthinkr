@@ -17,7 +17,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ShareDialog } from "@/components/share-dialog"
 import { toast } from "@/components/ui/use-toast"
 import { saveClassification } from "@/lib/analytics-utils"
-import { generateShareLink, copyToClipboard } from "@/lib/share-utils" // Import new share utilities
+import { generateShareLink } from "@/lib/share-utils" // Keep generateShareLink from here
+import { copyToClipboard } from "@/utils/export-utils" // Import copyToClipboard from its correct location
 import type { Message as AIMessage } from "ai"
 import Link from "next/link"
 
