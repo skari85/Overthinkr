@@ -3,15 +3,14 @@
 import type React from "react"
 
 import { usePathname } from "next/navigation"
-// Removed direct import of Header and Footer
+import { Header } from "@/components/header"
+import { Footer } from "@/components/footer"
 
 interface ConditionalLayoutProps {
   children: React.ReactNode
-  header: React.ReactNode // New prop for header
-  footer: React.ReactNode // New prop for footer
 }
 
-export function ConditionalLayout({ children, header, footer }: ConditionalLayoutProps) {
+export function ConditionalLayout({ children }: ConditionalLayoutProps) {
   const pathname = usePathname()
   const isLandingPage = pathname === "/"
 
@@ -21,9 +20,9 @@ export function ConditionalLayout({ children, header, footer }: ConditionalLayou
 
   return (
     <div className="flex min-h-screen flex-col">
-      {header} {/* Render header prop */}
+      <Header />
       <main className="flex-1">{children}</main>
-      {footer} {/* Render footer prop */}
+      <Footer />
     </div>
   )
 }

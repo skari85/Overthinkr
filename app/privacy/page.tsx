@@ -1,11 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Shield, Lock, Eye, Database } from "lucide-react"
-import type { Metadata } from "next"
-
-export const metadata: Metadata = {
-  title: "Privacy Policy",
-  description: "Learn how Overthinkr protects your privacy and data",
-}
 
 export default function PrivacyPage() {
   return (

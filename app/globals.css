@@ -10,7 +10,7 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 235 100% 62%; /* Default primary, will be overridden by --custom-primary-color */
+    --primary: 235 100% 62%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -22,14 +22,8 @@
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 235 100% 62%; /* Default ring, will be overridden by --custom-primary-color */
+    --ring: 235 100% 62%;
     --radius: 0.75rem;
-
-    /* Custom UI variables */
-    --custom-primary-color: #3b55ff; /* Default Overthinkr blue */
-    --custom-primary-color-foreground: 210 40% 98%; /* White for text on custom primary */
-    --custom-primary-color-hover: #2a3af7; /* Slightly darker for hover */
-    --custom-primary-color-active: #2330e2; /* Even darker for active */
   }
 
   .dark {
@@ -39,7 +33,7 @@
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 235 100% 62%; /* Default primary, will be overridden by --custom-primary-color */
+    --primary: 235 100% 62%;
     --primary-foreground: 222.2 47.4% 11.2%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -51,13 +45,7 @@
     --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 235 100% 62%; /* Default ring, will be overridden by --custom-primary-color */
-
-    /* Custom UI variables for dark mode */
-    --custom-primary-color: #3b55ff; /* Default Overthinkr blue */
-    --custom-primary-color-foreground: 210 40% 98%; /* White for text on custom primary */
-    --custom-primary-color-hover: #5c7dff; /* Slightly lighter for hover */
-    --custom-primary-color-active: #8eaaff; /* Even lighter for active */
+    --ring: 235 100% 62%;
   }
 }
 
@@ -67,47 +55,15 @@
   }
   body {
     @apply bg-background text-foreground transition-colors;
-    font-family: var(--font-sans); /* Default font family */
-  }
-
-  /* Accessibility: Reduced Motion */
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-      scroll-behavior: auto !important;
-    }
   }
 }
 
 @layer components {
   .chat-bubble-user {
-    /* Use custom primary color for user chat bubbles */
-    background-color: var(--custom-primary-color);
-    color: hsl(var(--custom-primary-color-foreground));
-    @apply rounded-2xl rounded-br-none shadow-md;
+    @apply bg-overthinkr-600 text-white rounded-2xl rounded-br-none shadow-md;
   }
 
   .chat-bubble-ai {
     @apply bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-2xl rounded-bl-none shadow-md border border-gray-100 dark:border-gray-700 transition-colors;
-  }
-
-  /* Apply custom primary color to buttons */
-  .btn-primary-custom {
-    background-color: var(--custom-primary-color);
-    color: hsl(var(--custom-primary-color-foreground));
-  }
-  .btn-primary-custom:hover {
-    background-color: var(--custom-primary-color-hover);
-  }
-  .btn-primary-custom:active {
-    background-color: var(--custom-primary-color-active);
-  }
-  .btn-primary-custom:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
   }
 }

@@ -117,11 +117,6 @@ const config = {
         pulse: "pulse 1.5s ease-in-out infinite",
         "bounce-in": "bounce-in 0.3s ease-out",
       },
-      fontFamily: {
-        sans: ["var(--font-sans)"],
-        serif: ["var(--font-serif)"],
-        mono: ["var(--font-mono)"],
-      },
     },
   },
   plugins: [require("tailwindcss-animate")],

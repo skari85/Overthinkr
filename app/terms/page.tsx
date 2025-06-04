@@ -1,11 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { FileText, AlertTriangle, Users, Gavel } from "lucide-react"
-import type { Metadata } from "next"
-
-export const metadata: Metadata = {
-  title: "Terms of Service",
-  description: "Terms of service for using Overthinkr responsibly",
-}
 
 export default function TermsPage() {
   return (

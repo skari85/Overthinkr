@@ -64,17 +64,16 @@ To use Overthinkr, you must supply your own API key for one of the supported ser
 1. Create a `.env` file
 2. Add one of the following:
 
-```env
+\`\`\`env
 # For Groq
 GROQ_API_KEY=your-groq-key-here
 
 # Or for OpenRouter
 OPENROUTER_API_KEY=your-openrouter-key-here
-```
+\`\`\`
 
 3. Run the app – no bundled key is included. You’re in full control of your data and costs.
 
 ---
 
 Overthinkr is a **digital overthinking detector** — a lightweight, privacy-first tool for quick clarity on your concerns.
-

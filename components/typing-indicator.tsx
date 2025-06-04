@@ -4,17 +4,14 @@ export function TypingIndicator() {
       <div
         className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-pulse"
         style={{ animationDelay: "0ms" }}
-        aria-hidden="true" // Added for accessibility
       ></div>
       <div
         className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-pulse"
         style={{ animationDelay: "300ms" }}
-        aria-hidden="true" // Added for accessibility
       ></div>
       <div
         className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-pulse"
         style={{ animationDelay: "600ms" }}
-        aria-hidden="true" // Added for accessibility
       ></div>
     </div>
   )
