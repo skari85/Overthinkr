@@ -5,8 +5,9 @@ import { Inter, Roboto, Open_Sans, Lato, Montserrat, Merriweather, Roboto_Mono }
 import { ThemeProvider } from "@/components/theme-provider"
 import { ConditionalLayout } from "@/components/conditional-layout"
 import { APIProvider } from "@/contexts/api-context"
-import { Toaster } from "@/components/ui/toaster"
 import { UICustomizationProvider, type CustomFont } from "@/contexts/ui-customization-context"
+import { Toaster } from "@/components/ui/toaster"
+import { SupabaseProvider } from "@/providers/supabase-provider" // Import SupabaseProvider
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 const roboto = Roboto({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-roboto" })
@@ -52,7 +53,11 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <APIProvider>
             <UICustomizationProvider>
-              <ConditionalLayout>{children}</ConditionalLayout>
+              <SupabaseProvider>
+                {" "}
+                {/* Wrap with SupabaseProvider */}
+                <ConditionalLayout>{children}</ConditionalLayout>
+              </SupabaseProvider>
               <Toaster />
             </UICustomizationProvider>
           </APIProvider>
