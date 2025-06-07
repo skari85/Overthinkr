@@ -13,10 +13,32 @@ import { useAPI } from "@/contexts/api-context"
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Textarea } from "@/components/ui/textarea"
-import { WhatIfMessage } from "./what-if-message" // Import the new component
+import { WhatIfMessage } from "./what-if-message"
+import type { Message as AIMessage } from "ai" // Import Message type from ai
+
+const WHAT_IF_MESSAGES_STORAGE_KEY = "overthinkr-what-if-messages"
 
 export default function WhatIfExplorer() {
   const { selectedService, getActiveApiKey, isConfigured } = useAPI()
+  const [initialMessages, setInitialMessages] = useState<AIMessage[]>([])
+  const [isLoaded, setIsLoaded] = useState(false) // State to track if initial load is complete
+
+  // Load messages from local storage on initial mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedMessages = localStorage.getItem(WHAT_IF_MESSAGES_STORAGE_KEY)
+      if (storedMessages) {
+        try {
+          setInitialMessages(JSON.parse(storedMessages))
+        } catch (error) {
+          console.error("Failed to parse stored What If messages:", error)
+          setInitialMessages([]) // Clear invalid data
+        }
+      }
+      setIsLoaded(true) // Mark as loaded
+    }
+  }, [])
+
   const { messages, input, handleInputChange, handleSubmit, setMessages, reload, isLoading } = useChat({
     api: "/api/chat",
     body: {
@@ -24,7 +46,21 @@ export default function WhatIfExplorer() {
       apiKey: getActiveApiKey(),
       mode: "what-if", // Signal to the API that this is a "what-if" scenario
     },
+    initialMessages: initialMessages, // Pass loaded messages to useChat
+    onFinish: (message) => {
+      // This callback is useful if you need to do something after a message is fully received
+      // For local storage, we'll rely on the messages dependency in the useEffect below
+    },
   })
+
+  // Save messages to local storage whenever messages state changes
+  useEffect(() => {
+    if (isLoaded && typeof window !== "undefined") {
+      // Only save after initial load
+      localStorage.setItem(WHAT_IF_MESSAGES_STORAGE_KEY, JSON.stringify(messages))
+    }
+  }, [messages, isLoaded])
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [newMessageId, setNewMessageId] = useState<string | null>(null)
 
@@ -55,6 +91,11 @@ export default function WhatIfExplorer() {
       return () => clearTimeout(timer)
     }
   }, [messages])
+
+  // Render nothing until initial messages are loaded to prevent flickering
+  if (!isLoaded) {
+    return null
+  }
 
   return (
     <div className="container mx-auto py-6 px-4 md:py-10">
