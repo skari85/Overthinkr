@@ -14,16 +14,31 @@ import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Textarea } from "@/components/ui/textarea"
 import { WhatIfMessage } from "./what-if-message"
-import type { Message as AIMessage } from "ai" // Import Message type from ai
+import type { Message as AIMessage } from "ai"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select" // Import Select components
+import { Label } from "@/components/ui/label" // Import Label
+import { aiPersonas, type AIPersonaId } from "@/lib/ai-personas" // Import personas
 
 const WHAT_IF_MESSAGES_STORAGE_KEY = "overthinkr-what-if-messages"
+const WHAT_IF_PERSONA_STORAGE_KEY = "overthinkr-what-if-persona"
 
 export default function WhatIfExplorer() {
   const { selectedService, getActiveApiKey, isConfigured } = useAPI()
   const [initialMessages, setInitialMessages] = useState<AIMessage[]>([])
-  const [isLoaded, setIsLoaded] = useState(false) // State to track if initial load is complete
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [selectedPersonaId, setSelectedPersonaId] = useState<AIPersonaId>("default") // State for selected persona
+  const { messages, input, handleInputChange, handleSubmit, setMessages, reload, isLoading } = useChat({
+    api: "/api/chat",
+    body: {
+      service: selectedService,
+      apiKey: getActiveApiKey(),
+      mode: "what-if", // Still signal "what-if" mode
+      personaId: selectedPersonaId, // Send the selected persona ID
+    },
+    initialMessages: initialMessages,
+  })
 
-  // Load messages from local storage on initial mount
+  // Load messages and persona from local storage on initial mount
   useEffect(() => {
     if (typeof window !== "undefined") {
       const storedMessages = localStorage.getItem(WHAT_IF_MESSAGES_STORAGE_KEY)
@@ -32,34 +47,34 @@ export default function WhatIfExplorer() {
           setInitialMessages(JSON.parse(storedMessages))
         } catch (error) {
           console.error("Failed to parse stored What If messages:", error)
-          setInitialMessages([]) // Clear invalid data
+          setInitialMessages([])
         }
       }
-      setIsLoaded(true) // Mark as loaded
+
+      const storedPersona = localStorage.getItem(WHAT_IF_PERSONA_STORAGE_KEY) as AIPersonaId
+      if (storedPersona && aiPersonas.some((p) => p.id === storedPersona)) {
+        setSelectedPersonaId(storedPersona)
+      } else {
+        setSelectedPersonaId("default") // Fallback to default if not found or invalid
+      }
+
+      setIsLoaded(true)
     }
   }, [])
-
-  const { messages, input, handleInputChange, handleSubmit, setMessages, reload, isLoading } = useChat({
-    api: "/api/chat",
-    body: {
-      service: selectedService,
-      apiKey: getActiveApiKey(),
-      mode: "what-if", // Signal to the API that this is a "what-if" scenario
-    },
-    initialMessages: initialMessages, // Pass loaded messages to useChat
-    onFinish: (message) => {
-      // This callback is useful if you need to do something after a message is fully received
-      // For local storage, we'll rely on the messages dependency in the useEffect below
-    },
-  })
 
   // Save messages to local storage whenever messages state changes
   useEffect(() => {
     if (isLoaded && typeof window !== "undefined") {
-      // Only save after initial load
       localStorage.setItem(WHAT_IF_MESSAGES_STORAGE_KEY, JSON.stringify(messages))
     }
   }, [messages, isLoaded])
+
+  // Save selected persona to local storage whenever it changes
+  useEffect(() => {
+    if (isLoaded && typeof window !== "undefined") {
+      localStorage.setItem(WHAT_IF_PERSONA_STORAGE_KEY, selectedPersonaId)
+    }
+  }, [selectedPersonaId, isLoaded])
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [newMessageId, setNewMessageId] = useState<string | null>(null)
@@ -92,7 +107,6 @@ export default function WhatIfExplorer() {
     }
   }, [messages])
 
-  // Render nothing until initial messages are loaded to prevent flickering
   if (!isLoaded) {
     return null
   }
@@ -161,6 +175,23 @@ export default function WhatIfExplorer() {
           </CardContent>
 
           <CardFooter className="border-t p-4 flex flex-col gap-3">
+            {/* Persona Selection */}
+            <div className="w-full space-y-2">
+              <Label htmlFor="ai-persona-select">AI Persona</Label>
+              <Select value={selectedPersonaId} onValueChange={(value: AIPersonaId) => setSelectedPersonaId(value)}>
+                <SelectTrigger id="ai-persona-select" className="w-full">
+                  <SelectValue placeholder="Select an AI persona" />
+                </SelectTrigger>
+                <SelectContent>
+                  {aiPersonas.map((persona) => (
+                    <SelectItem key={persona.id} value={persona.id}>
+                      {persona.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <form onSubmit={handleSubmit} className="flex w-full gap-2">
               <Textarea
                 className="flex-1 min-h-[40px] max-h-[150px]"
