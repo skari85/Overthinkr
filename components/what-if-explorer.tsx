@@ -13,6 +13,7 @@ import { useAPI } from "@/contexts/api-context"
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Textarea } from "@/components/ui/textarea"
+import { WhatIfMessage } from "./what-if-message" // Import the new component
 
 export default function WhatIfExplorer() {
   const { selectedService, getActiveApiKey, isConfigured } = useAPI()
@@ -71,7 +72,7 @@ export default function WhatIfExplorer() {
           </CardHeader>
           <CardContent className="p-0">
             <ScrollArea className="h-[500px] md:h-[600px]">
-              <div className="p-4 space-y-4">
+              <div className="p-4 space-y-4" aria-live="polite">
                 {messages.length === 0 && (
                   <div className="flex flex-col items-center justify-center h-96 text-center py-10 px-4">
                     <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">
@@ -89,14 +90,23 @@ export default function WhatIfExplorer() {
                   </div>
                 )}
 
-                {messages.map((m) => (
-                  <Message
-                    key={m.id}
-                    content={m.content}
-                    role={m.role as "user" | "assistant"}
-                    isNew={m.id === newMessageId}
-                  />
-                ))}
+                {messages.map((m) =>
+                  m.role === "user" ? (
+                    <Message
+                      key={m.id}
+                      content={m.content}
+                      role={m.role as "user" | "assistant"}
+                      isNew={m.id === newMessageId}
+                    />
+                  ) : (
+                    <WhatIfMessage
+                      key={m.id}
+                      content={m.content}
+                      isNew={m.id === newMessageId}
+                      // You can pass onShare and showShareButton if needed for assistant messages
+                    />
+                  ),
+                )}
 
                 {isLoading && (
                   <div className="flex items-start gap-3">
@@ -118,6 +128,7 @@ export default function WhatIfExplorer() {
                 onChange={handleInputChange}
                 disabled={isLoading || !isConfigured()}
                 rows={1}
+                aria-label="Describe your 'what if' scenario"
               />
               <TooltipProvider>
                 <Tooltip>
@@ -126,6 +137,7 @@ export default function WhatIfExplorer() {
                       type="submit"
                       disabled={isLoading || !input.trim() || !isConfigured()}
                       variant="customPrimary"
+                      aria-label="Analyze scenario"
                     >
                       <Send className="h-4 w-4" />
                       <span className="sr-only">Send</span>
@@ -148,6 +160,7 @@ export default function WhatIfExplorer() {
                       onClick={handleRerun}
                       disabled={isLoading || messages.length === 0}
                       className="h-9 w-9"
+                      aria-label="Rerun Last Query"
                     >
                       <RefreshCw className="h-4 w-4" />
                       <span className="sr-only">Rerun Last Query</span>
@@ -168,6 +181,7 @@ export default function WhatIfExplorer() {
                       onClick={handleClear}
                       disabled={isLoading || messages.length === 0}
                       className="h-9 w-9"
+                      aria-label="Clear Scenario"
                     >
                       <Trash2 className="h-4 w-4" />
                       <span className="sr-only">Clear Scenario</span>
