@@ -18,6 +18,7 @@ import type { Message as AIMessage } from "ai"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select" // Import Select components
 import { Label } from "@/components/ui/label" // Import Label
 import { aiPersonas, type AIPersonaId } from "@/lib/ai-personas" // Import personas
+import { guidedSessions } from "@/lib/guided-sessions" // Import guided sessions
 
 const WHAT_IF_MESSAGES_STORAGE_KEY = "overthinkr-what-if-messages"
 const WHAT_IF_PERSONA_STORAGE_KEY = "overthinkr-what-if-persona"
@@ -27,7 +28,7 @@ export default function WhatIfExplorer() {
   const [initialMessages, setInitialMessages] = useState<AIMessage[]>([])
   const [isLoaded, setIsLoaded] = useState(false)
   const [selectedPersonaId, setSelectedPersonaId] = useState<AIPersonaId>("default") // State for selected persona
-  const { messages, input, handleInputChange, handleSubmit, setMessages, reload, isLoading } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, setMessages, reload, isLoading, setInput } = useChat({
     api: "/api/chat",
     body: {
       service: selectedService,
@@ -92,6 +93,10 @@ export default function WhatIfExplorer() {
     }
   }
 
+  const handleGuidedSessionClick = (prompt: string) => {
+    setInput(prompt)
+  }
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
 
@@ -129,18 +134,28 @@ export default function WhatIfExplorer() {
             <ScrollArea className="h-[500px] md:h-[600px]">
               <div className="p-4 space-y-4" aria-live="polite">
                 {messages.length === 0 && (
-                  <div className="flex flex-col items-center justify-center h-96 text-center py-10 px-4">
+                  <div className="flex flex-col items-center justify-center h-full text-center py-10 px-4">
                     <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">
                       Explore Your "What Ifs"
                     </h3>
                     <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
-                      Type out a hypothetical situation you're overthinking, and let the AI help you break it down.
+                      Type out a hypothetical situation you're overthinking, or choose a guided session below.
                     </p>
-                    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 max-w-lg">
-                      <p className="text-sm text-gray-600 dark:text-gray-300 italic">
-                        Try asking something like: "What if I fail my job interview next week?" or "What if my friend
-                        gets mad at me for saying no?"
-                      </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg">
+                      {guidedSessions.map((session) => (
+                        <Card
+                          key={session.id}
+                          className="cursor-pointer hover:shadow-md transition-shadow"
+                          onClick={() => handleGuidedSessionClick(session.prompt)}
+                        >
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-base">{session.title}</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <CardDescription className="text-sm">{session.description}</CardDescription>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
                   </div>
                 )}
