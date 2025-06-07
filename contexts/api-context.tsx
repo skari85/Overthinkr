@@ -22,31 +22,49 @@ export function APIProvider({ children }: { children: ReactNode }) {
   const [groqApiKey, setGroqApiKey] = useState("")
   const [openRouterApiKey, setOpenRouterApiKey] = useState("")
 
-  // Load from localStorage on mount
+  // Load from localStorage or environment variable on mount
   useEffect(() => {
     const savedService = localStorage.getItem("overthinkr-service") as AIService
     const savedGroqKey = localStorage.getItem("overthinkr-groq-key")
     const savedOpenRouterKey = localStorage.getItem("overthinkr-openrouter-key")
 
-    if (savedService) setSelectedService(savedService)
-    if (savedGroqKey) setGroqApiKey(savedGroqKey)
+    // Prioritize NEXT_PUBLIC_GROQ_API_KEY from environment if available
+    const envGroqKey = process.env.NEXT_PUBLIC_GROQ_API_KEY
+    if (envGroqKey) {
+      setGroqApiKey(envGroqKey)
+      // If an env key is present, default to Groq service
+      setSelectedService("groq")
+    } else if (savedGroqKey) {
+      setGroqApiKey(savedGroqKey)
+    }
+
+    // OpenRouter key still relies on local storage or manual input
     if (savedOpenRouterKey) setOpenRouterApiKey(savedOpenRouterKey)
+
+    // If no env key for Groq, and no saved service, use saved service
+    if (!envGroqKey && savedService) setSelectedService(savedService)
   }, [])
 
-  // Save to localStorage when values change
+  // Save to localStorage when values change, but only if not from env
   useEffect(() => {
     localStorage.setItem("overthinkr-service", selectedService)
   }, [selectedService])
 
   useEffect(() => {
-    if (groqApiKey) {
+    // Only save to local storage if the key is not from the environment variable
+    if (groqApiKey && groqApiKey !== process.env.NEXT_PUBLIC_GROQ_API_KEY) {
       localStorage.setItem("overthinkr-groq-key", groqApiKey)
+    } else if (!groqApiKey && localStorage.getItem("overthinkr-groq-key")) {
+      // Clear local storage if key is removed and not from env
+      localStorage.removeItem("overthinkr-groq-key")
     }
   }, [groqApiKey])
 
   useEffect(() => {
     if (openRouterApiKey) {
       localStorage.setItem("overthinkr-openrouter-key", openRouterApiKey)
+    } else if (!openRouterApiKey && localStorage.getItem("overthinkr-openrouter-key")) {
+      localStorage.removeItem("overthinkr-openrouter-key")
     }
   }, [openRouterApiKey])
 

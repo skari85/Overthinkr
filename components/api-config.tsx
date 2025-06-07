@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState } from "react" // Import useEffect
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -26,6 +26,9 @@ export function APIConfig() {
   const [isOpen, setIsOpen] = useState(false)
   const [showGroqKey, setShowGroqKey] = useState(false)
   const [showOpenRouterKey, setShowOpenRouterKey] = useState(false)
+
+  // Determine if Groq key is from environment
+  const isGroqKeyFromEnv = !!process.env.NEXT_PUBLIC_GROQ_API_KEY && groqApiKey === process.env.NEXT_PUBLIC_GROQ_API_KEY
 
   const handleServiceChange = (service: AIService) => {
     setSelectedService(service)
@@ -65,6 +68,11 @@ export function APIConfig() {
             </CardTitle>
             <p className="text-sm text-muted-foreground">
               Configure your AI service and API keys. Your keys are stored locally and never sent to our servers.
+              {isGroqKeyFromEnv && (
+                <span className="block text-xs text-green-600 dark:text-green-400 mt-1">
+                  Groq API Key loaded from environment variables.
+                </span>
+              )}
             </p>
           </CardHeader>
 
@@ -115,6 +123,7 @@ export function APIConfig() {
                           variant="ghost"
                           size="sm"
                           onClick={() => window.open("https://console.groq.com/keys", "_blank")}
+                          disabled={isGroqKeyFromEnv} // Disable if from env
                         >
                           <ExternalLink className="h-3 w-3" />
                         </Button>
@@ -136,6 +145,7 @@ export function APIConfig() {
                 value={groqApiKey}
                 onChange={(e) => setGroqApiKey(e.target.value)}
                 className={selectedService === "groq" ? "ring-2 ring-overthinkr-200" : ""}
+                disabled={isGroqKeyFromEnv} // Disable input if from env
               />
               {groqApiKey && !showGroqKey && (
                 <p className="text-xs text-muted-foreground">Key: {maskApiKey(groqApiKey)}</p>
