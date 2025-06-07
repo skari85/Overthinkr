@@ -1,6 +1,5 @@
 import { streamText } from "ai"
 import { createGroq } from "@ai-sdk/groq"
-import { createOpenAI } from "@ai-sdk/openai"
 import { aiPersonas } from "@/lib/ai-personas" // Import aiPersonas
 
 export async function POST(req: Request) {
@@ -32,19 +31,14 @@ export async function POST(req: Request) {
   }
 
   try {
+    // Introduce a 0.2-second delay before AI response generation
+    await new Promise((resolve) => setTimeout(resolve, 200))
+
     if (service === "groq") {
       const groqClient = createGroq({
         apiKey: apiKey,
       })
       model = groqClient("llama3-8b-8192")
-    } else if (service === "openrouter") {
-      // This block is kept for completeness if OpenRouter were to be used,
-      // but the current setup prioritizes Groq as per previous instructions.
-      const openRouterClient = createOpenAI({
-        apiKey: apiKey,
-        baseURL: "https://openrouter.ai/api/v1",
-      })
-      model = openRouterClient("meta-llama/llama-3.1-8b-instruct:free")
     } else {
       return new Response("Invalid service", { status: 400 })
     }
