@@ -17,48 +17,53 @@ interface APIContextType {
 
 const APIContext = createContext<APIContextType | undefined>(undefined)
 
-export function APIProvider({ children }: { children: ReactNode }) {
+interface APIProviderProps {
+  children: ReactNode
+  initialGroqApiKey?: string // New prop for server-provided key
+}
+
+export function APIProvider({ children, initialGroqApiKey }: APIProviderProps) {
   const [selectedService, setSelectedService] = useState<AIService>("groq")
-  const [groqApiKey, setGroqApiKey] = useState("")
+  // Initialize groqApiKey with the server-provided key, or from local storage
+  const [groqApiKey, setGroqApiKey] = useState(initialGroqApiKey || "")
   const [openRouterApiKey, setOpenRouterApiKey] = useState("")
 
-  // Load from localStorage or environment variable on mount
+  // Load from localStorage on mount, but prioritize initialGroqApiKey
   useEffect(() => {
     const savedService = localStorage.getItem("overthinkr-service") as AIService
     const savedGroqKey = localStorage.getItem("overthinkr-groq-key")
     const savedOpenRouterKey = localStorage.getItem("overthinkr-openrouter-key")
 
-    // Prioritize NEXT_PUBLIC_GROQ_API_KEY from environment if available
-    const envGroqKey = process.env.NEXT_PUBLIC_GROQ_API_KEY
-    if (envGroqKey) {
-      setGroqApiKey(envGroqKey)
-      // If an env key is present, default to Groq service
+    // If initialGroqApiKey is provided, it takes precedence and sets Groq as selected
+    if (initialGroqApiKey) {
+      setGroqApiKey(initialGroqApiKey)
       setSelectedService("groq")
     } else if (savedGroqKey) {
+      // Otherwise, load from local storage
       setGroqApiKey(savedGroqKey)
     }
 
-    // OpenRouter key still relies on local storage or manual input
     if (savedOpenRouterKey) setOpenRouterApiKey(savedOpenRouterKey)
 
-    // If no env key for Groq, and no saved service, use saved service
-    if (!envGroqKey && savedService) setSelectedService(savedService)
-  }, [])
+    // If no initialGroqApiKey and no saved service, use saved service
+    if (!initialGroqApiKey && savedService) setSelectedService(savedService)
+  }, [initialGroqApiKey]) // Re-run if initialGroqApiKey changes (though it typically won't after first render)
 
-  // Save to localStorage when values change, but only if not from env
+  // Save to localStorage when values change
   useEffect(() => {
     localStorage.setItem("overthinkr-service", selectedService)
   }, [selectedService])
 
   useEffect(() => {
-    // Only save to local storage if the key is not from the environment variable
-    if (groqApiKey && groqApiKey !== process.env.NEXT_PUBLIC_GROQ_API_KEY) {
+    // Only save to local storage if the key is not the one provided by the server
+    // This prevents overwriting a server-provided key with an empty string from local storage
+    if (groqApiKey && groqApiKey !== initialGroqApiKey) {
       localStorage.setItem("overthinkr-groq-key", groqApiKey)
     } else if (!groqApiKey && localStorage.getItem("overthinkr-groq-key")) {
-      // Clear local storage if key is removed and not from env
+      // Clear local storage if key is removed and not from initial prop
       localStorage.removeItem("overthinkr-groq-key")
     }
-  }, [groqApiKey])
+  }, [groqApiKey, initialGroqApiKey])
 
   useEffect(() => {
     if (openRouterApiKey) {
