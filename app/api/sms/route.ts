@@ -1,6 +1,5 @@
 import { generateText } from "ai"
 import { createGroq } from "@ai-sdk/groq"
-import { createOpenAI } from "@ai-sdk/openai"
 
 // This route will handle incoming Twilio SMS webhooks
 export async function POST(req: Request) {
@@ -22,36 +21,17 @@ export async function POST(req: Request) {
   // You would typically get the API key from environment variables
   // For this example, we'll use GROQ_API_KEY from the environment.
   const groqApiKey = process.env.GROQ_API_KEY
-  const openRouterApiKey = process.env.OPENROUTER_API_KEY // Assuming you might use this too
 
-  if (!groqApiKey && !openRouterApiKey) {
-    console.error("API keys are not configured.")
+  if (!groqApiKey) {
+    console.error("GROQ_API_KEY is not configured.")
     return new Response("<Response><Message>AI service not configured.</Message></Response>", {
       status: 500,
       headers: { "Content-Type": "text/xml" },
     })
   }
 
-  let model
-  let serviceUsed: "groq" | "openrouter" = "groq" // Default to Groq
-
-  if (groqApiKey) {
-    const groqClient = createGroq({ apiKey: groqApiKey })
-    model = groqClient("llama3-8b-8192")
-  } else if (openRouterApiKey) {
-    const openRouterClient = createOpenAI({
-      apiKey: openRouterApiKey,
-      baseURL: "https://openrouter.ai/api/v1",
-    })
-    model = openRouterClient("meta-llama/llama-3.1-8b-instruct:free")
-    serviceUsed = "openrouter"
-  } else {
-    // This case should ideally be caught by the earlier check, but for safety
-    return new Response("<Response><Message>No valid AI service configured.</Message></Response>", {
-      status: 500,
-      headers: { "Content-Type": "text/xml" },
-    })
-  }
+  const groqClient = createGroq({ apiKey: groqApiKey })
+  const model = groqClient("llama3-8b-8192")
 
   const systemPrompt = `You are an AI assistant named Overthinkr. Your goal is to help users determine if they are overthinking a problem.
     Analyze the user's message for tone and content.
