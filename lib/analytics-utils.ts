@@ -63,3 +63,27 @@ export function getAnalyticsMetrics() {
     validCount,
   }
 }
+
+/**
+ * Aggregates analytics data by day.
+ * @returns An array of objects, each representing a day with counts for overthinking and valid concerns.
+ */
+export function getDailyAnalyticsTrends() {
+  const data = getAnalyticsData()
+  const dailyTrends: { [key: string]: { date: string; overthinking: number; valid: number } } = {}
+
+  data.forEach((entry) => {
+    const date = new Date(entry.timestamp).toISOString().split("T")[0] // YYYY-MM-DD
+    if (!dailyTrends[date]) {
+      dailyTrends[date] = { date, overthinking: 0, valid: 0 }
+    }
+    if (entry.classification === "overthinking") {
+      dailyTrends[date].overthinking++
+    } else {
+      dailyTrends[date].valid++
+    }
+  })
+
+  // Sort by date
+  return Object.values(dailyTrends).sort((a, b) => a.date.localeCompare(b.date))
+}
