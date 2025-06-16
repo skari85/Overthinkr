@@ -9,9 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Badge } from "@/components/ui/badge"
 import { useAPI, type AIService } from "@/contexts/api-context"
-import { Settings, ChevronDown, ChevronUp, Key, ExternalLink, Eye, EyeOff } from "lucide-react"
+import { Settings, ChevronDown, ChevronUp, Key, ExternalLink, Eye, EyeOff, Lock, Check } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Switch } from "@/components/ui/switch" // Import Switch component
 
 export function APIConfig() {
   const {
@@ -218,15 +217,49 @@ export function APIConfig() {
               </div>
             )}
 
-            {/* Premium Mode Toggle */}
-            <div className="flex items-center justify-between space-x-2 pt-4 border-t">
-              <Label htmlFor="premium-mode">Simulate Premium Mode</Label>
-              <Switch id="premium-mode" checked={isPremium} onCheckedChange={setIsPremium} />
+            {/* Premium Features Unlock */}
+            <div className="space-y-2 pt-4 border-t">
+              <Label>Premium Features</Label>
+              {isPremium ? (
+                <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-medium">
+                  <Check className="h-5 w-5" />
+                  <span>Premium Features Unlocked!</span>
+                </div>
+              ) : (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="customPrimary"
+                        className="w-full"
+                        onClick={() => {
+                          setIsPremium(true) // Simulate unlock
+                          window.open("https://buy.stripe.com/7sYbJ1f5CdqK0jx3Pa0Fi02", "_blank")
+                        }}
+                      >
+                        <Lock className="h-4 w-4 mr-2" />
+                        Unlock Premium Features
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>
+                        Click to unlock premium features. (This is a simulation; a real app would require backend
+                        integration with Stripe webhooks for verification.)
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              <p className="text-sm text-muted-foreground">
+                Unlock advanced features like "Reframe for Clarity" and more.
+              </p>
+              {!isPremium && (
+                <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                  Note: This is a client-side simulation. In a real application, a backend would verify the Stripe
+                  payment.
+                </p>
+              )}
             </div>
-            <p className="text-sm text-muted-foreground">
-              Toggle this to simulate premium features like "Reframe for Clarity" button. (For demonstration purposes
-              only)
-            </p>
           </CardContent>
         </Card>
       </CollapsibleContent>
