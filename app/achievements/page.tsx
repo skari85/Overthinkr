@@ -8,6 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Trophy, RefreshCcw, Trash2 } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
+import { useAuth } from "@/contexts/auth-context" // Import useAuth
+import { Alert, AlertDescription } from "@/components/ui/alert" // Import Alert components
+import { AlertCircle } from "lucide-react" // Import AlertCircle
 
 // Dynamically import Lucide icons
 const Icon = ({ name, className }: { name: string; className?: string }) => {
@@ -30,27 +33,56 @@ const Icon = ({ name, className }: { name: string; className?: string }) => {
 }
 
 export default function AchievementsPage() {
+  const { user, loading: authLoading } = useAuth()
   const [achievements, setAchievements] = useState<Achievement[]>([])
+  const [isLoadingData, setIsLoadingData] = useState(true)
 
   useEffect(() => {
-    loadAchievements()
-  }, [])
+    if (!authLoading) {
+      loadAchievements()
+    }
+  }, [user, authLoading]) // Reload when user or authLoading changes
 
-  const loadAchievements = () => {
-    setAchievements(getAchievements())
+  const loadAchievements = async () => {
+    setIsLoadingData(true)
+    if (user?.uid) {
+      const fetchedAchievements = await getAchievements(user.uid)
+      setAchievements(fetchedAchievements)
+    } else {
+      // If no user, show default (unlocked: false) achievements
+      setAchievements(await getAchievements("")) // Pass empty string to get defaults
+    }
+    setIsLoadingData(false)
   }
 
-  const handleClearAchievements = () => {
-    clearAchievements()
-    setAchievements(getAchievements()) // Reload to show default (unlocked: false)
-    toast({
-      title: "Achievements Cleared",
-      description: "All your local achievement data has been reset.",
-    })
+  const handleClearAchievements = async () => {
+    if (user?.uid) {
+      await clearAchievements(user.uid)
+      toast({
+        title: "Achievements Cleared",
+        description: "All your achievement data has been removed from the cloud.",
+      })
+    } else {
+      toast({
+        title: "Achievements Cleared Locally",
+        description: "All your local achievement data has been reset.",
+      })
+    }
+    loadAchievements() // Reload to show default (unlocked: false)
   }
 
   const unlockedCount = achievements.filter((a) => a.unlocked).length
   const totalCount = achievements.length
+
+  if (authLoading || isLoadingData) {
+    return (
+      <div className="container mx-auto py-6 px-4 md:py-10">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="text-muted-foreground">Loading achievements...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto py-6 px-4 md:py-10">
@@ -62,10 +94,18 @@ export default function AchievementsPage() {
               Your Achievements
             </CardTitle>
             <CardDescription>
-              Unlock badges as you use Overthinkr and gain insights into your overthinking patterns.
+              Unlock badges as you use Overthinkr and gain insights into your overthinking patterns. Data is stored in
+              the cloud when logged in.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 space-y-6">
+            {!user && (
+              <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>Log in to save and access your achievements across devices.</AlertDescription>
+              </Alert>
+            )}
+
             {totalCount === 0 ? (
               <div className="text-center py-10 text-muted-foreground">
                 <p>No achievements defined yet. Check back later!</p>

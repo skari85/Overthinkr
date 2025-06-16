@@ -1,7 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getAnalyticsData, clearAnalyticsData, type AnalyticsEntry } from "@/lib/analytics-utils"
+import {
+  getAnalyticsMetrics,
+  clearAnalyticsData,
+  getDailyAnalyticsTrends,
+  type AnalyticsEntry,
+  getAnalyticsData,
+} from "@/lib/analytics-utils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
@@ -9,45 +15,81 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { PieChart, Pie, Cell, Legend } from "recharts"
 import { History, RefreshCcw, Trash2 } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
+import { useAuth } from "@/contexts/auth-context" // Import useAuth
+import { Alert, AlertDescription } from "@/components/ui/alert" // Import Alert components
+import { AlertCircle } from "lucide-react" // Import AlertCircle
 
 export default function AnalyticsPage() {
+  const { user, loading: authLoading } = useAuth()
   const [analyticsData, setAnalyticsData] = useState<AnalyticsEntry[]>([])
+  const [metrics, setMetrics] = useState({ totalConversations: 0, overthinkingCount: 0, validCount: 0 })
+  const [dailyTrends, setDailyTrends] = useState([])
+  const [isLoadingData, setIsLoadingData] = useState(true)
 
   useEffect(() => {
-    loadAnalytics()
-  }, [])
+    if (!authLoading) {
+      loadAnalytics()
+    }
+  }, [user, authLoading]) // Reload when user or authLoading changes
 
-  const loadAnalytics = () => {
-    setAnalyticsData(getAnalyticsData())
+  const loadAnalytics = async () => {
+    setIsLoadingData(true)
+    if (user?.uid) {
+      const data = await getAnalyticsData(user.uid)
+      setAnalyticsData(data)
+      setMetrics(await getAnalyticsMetrics(user.uid))
+      setDailyTrends(await getDailyAnalyticsTrends(user.uid))
+    } else {
+      // Clear data if no user is logged in
+      setAnalyticsData([])
+      setMetrics({ totalConversations: 0, overthinkingCount: 0, validCount: 0 })
+      setDailyTrends([])
+    }
+    setIsLoadingData(false)
   }
 
-  const handleClearAnalytics = () => {
-    clearAnalyticsData()
-    setAnalyticsData([])
-    toast({
-      title: "Analytics Cleared",
-      description: "All your local analytics data has been removed.",
-    })
+  const handleClearAnalytics = async () => {
+    if (user?.uid) {
+      await clearAnalyticsData(user.uid)
+      toast({
+        title: "Analytics Cleared",
+        description: "All your analytics data has been removed from the cloud.",
+      })
+    } else {
+      toast({
+        title: "Analytics Cleared Locally",
+        description: "All your local analytics data has been removed.",
+      })
+    }
+    loadAnalytics() // Reload to show empty state
   }
 
-  const overthinkingCount = analyticsData.filter((entry) => entry.classification === "overthinking").length
-  const validCount = analyticsData.filter((entry) => entry.classification === "valid").length
-  const totalEntries = analyticsData.length
-
-  const overthinkingPercentage = totalEntries > 0 ? ((overthinkingCount / totalEntries) * 100).toFixed(1) : "0.0"
-  const validPercentage = totalEntries > 0 ? ((validCount / totalEntries) * 100).toFixed(1) : "0.0"
+  const overthinkingPercentage =
+    metrics.totalConversations > 0 ? ((metrics.overthinkingCount / metrics.totalConversations) * 100).toFixed(1) : "0.0"
+  const validPercentage =
+    metrics.totalConversations > 0 ? ((metrics.validCount / metrics.totalConversations) * 100).toFixed(1) : "0.0"
 
   const chartData = [
-    { name: "Overthinking", value: overthinkingCount, fill: "hsl(var(--overthinkr-500))" },
-    { name: "Valid Concern", value: validCount, fill: "hsl(var(--secondary))" },
+    { name: "Overthinking", value: metrics.overthinkingCount, fill: "hsl(var(--overthinkr-500))" },
+    { name: "Valid Concern", value: metrics.validCount, fill: "hsl(var(--secondary))" },
   ]
 
   const pieChartData = [
-    { name: "Overthinking", value: overthinkingCount },
-    { name: "Valid Concern", value: validCount },
+    { name: "Overthinking", value: metrics.overthinkingCount },
+    { name: "Valid Concern", value: metrics.validCount },
   ]
 
   const COLORS = ["hsl(var(--overthinkr-500))", "hsl(var(--secondary))"]
+
+  if (authLoading || isLoadingData) {
+    return (
+      <div className="container mx-auto py-6 px-4 md:py-10">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="text-muted-foreground">Loading analytics data...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto py-6 px-4 md:py-10">
@@ -59,11 +101,18 @@ export default function AnalyticsPage() {
               Your Overthinkr Analytics
             </CardTitle>
             <CardDescription>
-              Insights into your past Overthinkr sessions. All data is stored locally in your browser.
+              Insights into your past Overthinkr sessions. Data is stored in the cloud when logged in.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 space-y-6">
-            {totalEntries === 0 ? (
+            {!user && (
+              <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>Log in to save and access your analytics data across devices.</AlertDescription>
+              </Alert>
+            )}
+
+            {metrics.totalConversations === 0 ? (
               <div className="text-center py-10 text-muted-foreground">
                 <p>No analytics data yet. Start chatting with Overthinkr to see your patterns!</p>
                 <Button
@@ -79,7 +128,7 @@ export default function AnalyticsPage() {
                   <Card>
                     <CardHeader className="pb-2">
                       <CardDescription>Total Sessions</CardDescription>
-                      <CardTitle className="text-4xl">{totalEntries}</CardTitle>
+                      <CardTitle className="text-4xl">{metrics.totalConversations}</CardTitle>
                     </CardHeader>
                   </Card>
                   <Card>

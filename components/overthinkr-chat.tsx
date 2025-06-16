@@ -15,25 +15,23 @@ import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ShareDialog } from "@/components/share-dialog"
 import { toast } from "@/components/ui/use-toast"
-import { saveClassification } from "@/lib/analytics-utils"
-import { checkAndUnlockAchievements } from "@/lib/achievements-utils"
+import { saveClassification } from "@/lib/analytics-utils" // Updated import
+import { checkAndUnlockAchievements } from "@/lib/achievements-utils" // Updated import
 import { generateShareLink } from "@/lib/share-utils"
 import { copyToClipboard } from "@/utils/export-utils"
 import type { Message as AIMessage } from "ai"
 import Link from "next/link"
 import { APIConfig } from "@/components/api-config"
-import { useAuth } from "@/contexts/auth-context" // Import useAuth
-import { loadConversation, saveConversation, clearConversation } from "@/lib/firestore-utils" // Import Firestore utils
+import { useAuth } from "@/contexts/auth-context"
+import { loadConversation, saveConversation, clearConversation } from "@/lib/firestore-utils"
 
 interface OverthinkrChatProps {
   sharedMessages?: AIMessage[] | null
 }
 
-// Removed LOCAL_STORAGE_CHAT_KEY
-
 export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) {
   const { selectedService, getActiveApiKey, isConfigured } = useAPI()
-  const { user, loading: authLoading } = useAuth() // Get user and authLoading from AuthContext
+  const { user, loading: authLoading } = useAuth()
 
   const { messages, input, handleInputChange, handleSubmit, setMessages, reload, isLoading, setInput } = useChat({
     api: "/api/chat",
@@ -41,30 +39,30 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
       service: selectedService,
       apiKey: getActiveApiKey(),
     },
-    initialMessages: [], // Initial messages are loaded in useEffect
-    onFinish: (message) => {
-      const content = message.content.toLowerCase()
-      if (content.startsWith("yep, you're overthinking")) {
-        saveClassification("overthinking")
-      } else if (content.startsWith("nah, this might be valid")) {
-        saveClassification("valid")
-      }
-      const newlyUnlocked = checkAndUnlockAchievements()
-      newlyUnlocked.forEach((ach) => {
-        toast({
-          title: `Achievement Unlocked: ${ach.name}!`,
-          description: ach.description,
-          duration: 5000,
+    initialMessages: [],
+    onFinish: async (message) => {
+      if (user?.uid) {
+        const content = message.content.toLowerCase()
+        if (content.startsWith("yep, you're overthinking")) {
+          await saveClassification(user.uid, "overthinking")
+        } else if (content.startsWith("nah, this might be valid")) {
+          await saveClassification(user.uid, "valid")
+        }
+        const newlyUnlocked = await checkAndUnlockAchievements(user.uid) // Pass userId
+        newlyUnlocked.forEach((ach) => {
+          toast({
+            title: `Achievement Unlocked: ${ach.name}!`,
+            description: ach.description,
+            duration: 5000,
+          })
         })
-      })
+      }
     },
-    // Use onMessagesChange to save to Firestore
     onMessagesChange: (currentMessages) => {
       if (user?.uid) {
-        // Debounce saving to avoid too many writes
         const debounceSave = setTimeout(() => {
           saveConversation(user.uid, currentMessages)
-        }, 500) // Save 500ms after messages stop changing
+        }, 500)
         return () => clearTimeout(debounceSave)
       }
     },
@@ -73,9 +71,8 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [newMessageId, setNewMessageId] = useState<string | null>(null)
   const [shareAllDialogOpen, setShareAllDialogOpen] = useState(false)
-  const [isChatLoaded, setIsChatLoaded] = useState(false) // To prevent saving empty array on initial load
+  const [isChatLoaded, setIsChatLoaded] = useState(false)
 
-  // Load messages from Firestore on component mount or user change
   useEffect(() => {
     const loadChat = async () => {
       if (user?.uid && !isChatLoaded) {
@@ -83,13 +80,11 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
         setMessages(savedChat)
         setIsChatLoaded(true)
       } else if (!user?.uid && isChatLoaded) {
-        // If user logs out, clear messages from UI
         setMessages([])
         setIsChatLoaded(false)
       }
     }
     if (!authLoading) {
-      // Only try to load if auth state is known
       loadChat()
     }
   }, [user, authLoading, setMessages, isChatLoaded])
@@ -107,7 +102,7 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
         description: "Your conversation has been cleared from this browser.",
       })
     }
-    setMessages([]) // Clear messages from UI
+    setMessages([])
   }
 
   const handleRerun = () => {
@@ -243,7 +238,6 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
                     isNew={m.id === newMessageId}
                     showShareButton={m.role === "assistant" && !isLoading && index > 0}
                     onShare={() => handleShareSpecificMessage(m.id)}
-                    // Removed showReframingButton and onReframingRequest for now
                   />
                 ))}
 
@@ -261,7 +255,7 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
           <CardFooter className="border-t p-4 flex flex-col gap-3">
             {!user && !authLoading && (
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-800 dark:text-blue-200 text-center">
-                <p>Login to save your chat history to the cloud!</p>
+                <p>Login to save your chat history, analytics, and achievements to the cloud!</p>
                 <Button
                   variant="link"
                   onClick={() => window.location.reload()}
