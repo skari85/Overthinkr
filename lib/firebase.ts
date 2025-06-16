@@ -1,6 +1,5 @@
 // Import Firebase SDK modules
 import { initializeApp } from "firebase/app"
-import { getAnalytics } from "firebase/analytics"
 import { getAuth } from "firebase/auth"
 import { getFirestore } from "firebase/firestore"
 import { getStorage } from "firebase/storage"
@@ -23,6 +22,16 @@ const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app) // 🔐 Authentication
 export const db = getFirestore(app) // 🧠 Firestore DB
 export const storage = getStorage(app) // 📦 Cloud Storage
-export const analytics = getAnalytics(app) // 📊 Optional Analytics
+
+// Initialize Analytics only on the client side
+export const analytics = (() => {
+  if (typeof window !== "undefined") {
+    // Only import and initialize analytics in the browser
+    import("firebase/analytics").then(({ getAnalytics }) => {
+      return getAnalytics(app)
+    })
+  }
+  return null
+})()
 
 export default app // Export the main app instance too
