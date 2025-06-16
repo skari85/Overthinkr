@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { useAPI, type AIService } from "@/contexts/api-context"
 import { Settings, ChevronDown, ChevronUp, Key, ExternalLink, Eye, EyeOff } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Switch } from "@/components/ui/switch" // Import Switch component
 
 export function APIConfig() {
   const {
@@ -21,14 +22,14 @@ export function APIConfig() {
     openRouterApiKey,
     setOpenRouterApiKey,
     isConfigured,
+    isPremium, // Get isPremium
+    setIsPremium, // Get setIsPremium
+    isGroqKeyFromEnv, // Get isGroqKeyFromEnv
   } = useAPI()
 
   const [isOpen, setIsOpen] = useState(false)
   const [showGroqKey, setShowGroqKey] = useState(false)
   const [showOpenRouterKey, setShowOpenRouterKey] = useState(false)
-
-  // Determine if Groq key is present (implies it's configured, either from env or local storage)
-  const isGroqKeyPresent = !!groqApiKey
 
   const handleServiceChange = (service: AIService) => {
     setSelectedService(service)
@@ -68,11 +69,6 @@ export function APIConfig() {
             </CardTitle>
             <p className="text-sm text-muted-foreground">
               Configure your AI service and API keys. Your keys are stored locally and never sent to our servers.
-              {isGroqKeyPresent && (
-                <span className="block text-xs text-green-600 dark:text-green-400 mt-1">
-                  Groq API Key is configured.
-                </span>
-              )}
             </p>
           </CardHeader>
 
@@ -123,7 +119,7 @@ export function APIConfig() {
                           variant="ghost"
                           size="sm"
                           onClick={() => window.open("https://console.groq.com/keys", "_blank")}
-                          disabled={isGroqKeyPresent} // Disable if key is present
+                          disabled={isGroqKeyFromEnv} // Disable if key is from environment
                         >
                           <ExternalLink className="h-3 w-3" />
                         </Button>
@@ -145,9 +141,14 @@ export function APIConfig() {
                 value={groqApiKey}
                 onChange={(e) => setGroqApiKey(e.target.value)}
                 className={selectedService === "groq" ? "ring-2 ring-overthinkr-200" : ""}
-                disabled={isGroqKeyPresent} // Disable input if key is present
+                disabled={isGroqKeyFromEnv} // Disable input if key is from environment
               />
-              {groqApiKey && !showGroqKey && (
+              {isGroqKeyFromEnv && (
+                <p className="text-xs text-green-600 dark:text-green-400">
+                  This key is provided by the environment and cannot be changed here.
+                </p>
+              )}
+              {groqApiKey && !showGroqKey && !isGroqKeyFromEnv && (
                 <p className="text-xs text-muted-foreground">Key: {maskApiKey(groqApiKey)}</p>
               )}
             </div>
@@ -216,6 +217,16 @@ export function APIConfig() {
                 </p>
               </div>
             )}
+
+            {/* Premium Mode Toggle */}
+            <div className="flex items-center justify-between space-x-2 pt-4 border-t">
+              <Label htmlFor="premium-mode">Simulate Premium Mode</Label>
+              <Switch id="premium-mode" checked={isPremium} onCheckedChange={setIsPremium} />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Toggle this to simulate premium features like "Reframe for Clarity" button. (For demonstration purposes
+              only)
+            </p>
           </CardContent>
         </Card>
       </CollapsibleContent>

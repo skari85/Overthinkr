@@ -13,23 +13,24 @@ interface APIContextType {
   setOpenRouterApiKey: (key: string) => void
   getActiveApiKey: () => string
   isConfigured: () => boolean
-  isPremium: boolean // New: Premium status
-  setIsPremium: (value: boolean) => void // New: Setter for premium status
+  isPremium: boolean
+  setIsPremium: (value: boolean) => void
+  isGroqKeyFromEnv: boolean // New: Indicates if Groq key is from environment
 }
 
 const APIContext = createContext<APIContextType | undefined>(undefined)
 
 interface APIProviderProps {
   children: ReactNode
-  initialGroqApiKey?: string // New prop for server-provided key
+  initialGroqApiKey?: string // Prop for server-provided key
 }
 
 export function APIProvider({ children, initialGroqApiKey }: APIProviderProps) {
   const [selectedService, setSelectedService] = useState<AIService>("groq")
-  // Initialize groqApiKey with the server-provided key, or from local storage
-  const [groqApiKey, setGroqApiKey] = useState(initialGroqApiKey || "")
+  const [groqApiKey, setGroqApiKeyState] = useState(initialGroqApiKey || "")
   const [openRouterApiKey, setOpenRouterApiKey] = useState("")
-  const [isPremium, setIsPremium] = useState(false) // New: Premium state
+  const [isPremium, setIsPremium] = useState(false)
+  const [isGroqKeyFromEnv, setIsGroqKeyFromEnv] = useState(false) // New state
 
   // Load from localStorage on mount, but prioritize initialGroqApiKey
   useEffect(() => {
@@ -38,21 +39,30 @@ export function APIProvider({ children, initialGroqApiKey }: APIProviderProps) {
     const savedOpenRouterKey = localStorage.getItem("overthinkr-openrouter-key")
     const savedIsPremium = localStorage.getItem("overthinkr-is-premium")
 
-    // If initialGroqApiKey is provided, it takes precedence and sets Groq as selected
     if (initialGroqApiKey) {
-      setGroqApiKey(initialGroqApiKey)
+      setGroqApiKeyState(initialGroqApiKey)
       setSelectedService("groq")
+      setIsGroqKeyFromEnv(true) // Mark as from environment
     } else if (savedGroqKey) {
-      // Otherwise, load from local storage
-      setGroqApiKey(savedGroqKey)
+      setGroqApiKeyState(savedGroqKey)
+      setIsGroqKeyFromEnv(false) // Not from environment, from local storage
     }
 
     if (savedOpenRouterKey) setOpenRouterApiKey(savedOpenRouterKey)
-    if (savedIsPremium !== null) setIsPremium(JSON.parse(savedIsPremium)) // Load premium status
+    if (savedIsPremium !== null) setIsPremium(JSON.parse(savedIsPremium))
 
-    // If no initialGroqApiKey and no saved service, use saved service
     if (!initialGroqApiKey && savedService) setSelectedService(savedService)
-  }, [initialGroqApiKey]) // Re-run if initialGroqApiKey changes (though it typically won't after first render)
+  }, [initialGroqApiKey])
+
+  // Custom setter for Groq API key to respect environment variable
+  const setGroqApiKey = (key: string) => {
+    if (isGroqKeyFromEnv) {
+      // If the key is from the environment, prevent it from being changed via UI
+      console.warn("Groq API Key is provided by environment and cannot be changed via UI.")
+      return
+    }
+    setGroqApiKeyState(key)
+  }
 
   // Save to localStorage when values change
   useEffect(() => {
@@ -61,14 +71,14 @@ export function APIProvider({ children, initialGroqApiKey }: APIProviderProps) {
 
   useEffect(() => {
     // Only save to local storage if the key is not the one provided by the server
-    // This prevents overwriting a server-provided key with an empty string from local storage
-    if (groqApiKey && groqApiKey !== initialGroqApiKey) {
-      localStorage.setItem("overthinkr-groq-key", groqApiKey)
-    } else if (!groqApiKey && localStorage.getItem("overthinkr-groq-key")) {
-      // Clear local storage if key is removed and not from initial prop
-      localStorage.removeItem("overthinkr-groq-key")
+    if (!isGroqKeyFromEnv) {
+      if (groqApiKey) {
+        localStorage.setItem("overthinkr-groq-key", groqApiKey)
+      } else {
+        localStorage.removeItem("overthinkr-groq-key")
+      }
     }
-  }, [groqApiKey, initialGroqApiKey])
+  }, [groqApiKey, isGroqKeyFromEnv])
 
   useEffect(() => {
     if (openRouterApiKey) {
@@ -78,7 +88,6 @@ export function APIProvider({ children, initialGroqApiKey }: APIProviderProps) {
     }
   }, [openRouterApiKey])
 
-  // New: Save premium status to local storage
   useEffect(() => {
     localStorage.setItem("overthinkr-is-premium", JSON.stringify(isPremium))
   }, [isPremium])
@@ -103,8 +112,9 @@ export function APIProvider({ children, initialGroqApiKey }: APIProviderProps) {
         setOpenRouterApiKey,
         getActiveApiKey,
         isConfigured,
-        isPremium, // New: Provide premium status
-        setIsPremium, // New: Provide premium setter
+        isPremium,
+        setIsPremium,
+        isGroqKeyFromEnv, // Provide new state
       }}
     >
       {children}
