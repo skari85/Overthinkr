@@ -3,36 +3,27 @@
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Share2, Lightbulb } from "lucide-react"
+import { Share2 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { useUserProfile } from "@/contexts/user-profile-context" // Import user profile context
-import { SetReminderDialog } from "./set-reminder-dialog" // Import the SetReminderDialog
-import React from "react" // Import React for React.memo
 
 interface MessageProps {
   content: string
   role: "user" | "assistant"
   isNew?: boolean
-  messageId: string // Added: Unique ID for the message, needed for reminders
   // New prop for sharing specific messages
   onShare?: () => void
   showShareButton?: boolean
-  // New prop for setting reminders
-  showSetReminderButton?: boolean
+  isShareableImage?: boolean // New prop for image export context
 }
 
-export const Message = React.memo(function Message({
-  // Wrapped with React.memo
+export function Message({
   content,
   role,
   isNew = false,
-  messageId, // Destructure the new prop
   onShare,
   showShareButton = false,
-  showSetReminderButton = false,
+  isShareableImage = false,
 }: MessageProps) {
-  const { nickname, getAvatarSrc } = useUserProfile() // Use user profile context
-
   return (
     <div
       className={cn(
@@ -50,31 +41,10 @@ export const Message = React.memo(function Message({
       )}
       <div className={cn("max-w-[80%] p-3", role === "user" ? "chat-bubble-user" : "chat-bubble-ai")}>
         <p className="text-sm leading-relaxed">{content}</p>
-        {(showShareButton || showSetReminderButton) && (
-          <div className="mt-2 flex justify-end gap-1">
-            {showSetReminderButton && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    {/* Wrap the button with SetReminderDialog */}
-                    <SetReminderDialog messageId={messageId} initialMessageContent={content}>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                      >
-                        <Lightbulb className="h-3 w-3" />
-                        <span className="sr-only">Set Reminder</span>
-                      </Button>
-                    </SetReminderDialog>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Set a reminder for this insight</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-            {showShareButton && onShare && (
+        {showShareButton &&
+          onShare &&
+          !isShareableImage && ( // Hide share button if it's for image export
+            <div className="mt-2 flex justify-end">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -93,18 +63,15 @@ export const Message = React.memo(function Message({
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-            )}
-          </div>
-        )}
+            </div>
+          )}
       </div>
       {role === "user" && (
         <Avatar className="h-8 w-8 border bg-white dark:bg-gray-800 shadow-sm">
-          <AvatarImage src={getAvatarSrc() || "/placeholder.svg"} alt={nickname} /> {/* Use dynamic avatar src */}
-          <AvatarFallback className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-            {nickname.charAt(0).toUpperCase()} {/* Use first letter of nickname */}
-          </AvatarFallback>
+          <AvatarImage src="/placeholder.svg?height=32&width=32" alt="You" />
+          <AvatarFallback className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">You</AvatarFallback>
         </Avatar>
       )}
     </div>
   )
-})
+}

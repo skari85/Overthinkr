@@ -1,4 +1,9 @@
-import { getAnalyticsMetrics } from "./analytics-utils"
+import {
+  loadUserAchievements,
+  saveUserAchievements,
+  clearUserAchievements as clearAchievementsFirestore,
+} from "./firestore-utils" // Import Firestore utils
+import { getAnalyticsMetrics } from "./analytics-utils" // Still need analytics metrics
 
 export interface Achievement {
   id: string
@@ -11,7 +16,7 @@ export interface Achievement {
   unlockedAt?: number
 }
 
-const LOCAL_STORAGE_KEY = "overthinkr-achievements"
+// Removed LOCAL_STORAGE_KEY
 
 // Define all possible achievements
 const defaultAchievements: Achievement[] = [
@@ -81,20 +86,17 @@ const defaultAchievements: Achievement[] = [
 ]
 
 /**
- * Retrieves all achievements from local storage, merging with default achievements.
+ * Retrieves all achievements from Firestore for a given user, merging with default achievements.
+ * @param userId The Firebase User ID.
  * @returns An array of Achievement objects.
  */
-export function getAchievements(): Achievement[] {
-  if (typeof window === "undefined") return defaultAchievements // Ensure this runs only in the browser
-
-  const data = localStorage.getItem(LOCAL_STORAGE_KEY)
-  let savedAchievements: Achievement[] = []
-  try {
-    savedAchievements = data ? JSON.parse(data) : []
-  } catch (error) {
-    console.error("Failed to parse achievements data from local storage:", error)
-    localStorage.removeItem(LOCAL_STORAGE_KEY) // Clear corrupted data
+export async function getAchievements(userId: string): Promise<Achievement[]> {
+  if (!userId) {
+    console.warn("Cannot get achievements: userId is null or undefined.")
+    return defaultAchievements // Return defaults if no user
   }
+
+  const savedAchievements = await loadUserAchievements(userId) // Load from Firestore
 
   // Merge saved achievements with default ones to ensure new achievements are added
   const mergedAchievements = defaultAchievements.map((defaultAch) => {
@@ -106,21 +108,31 @@ export function getAchievements(): Achievement[] {
 }
 
 /**
- * Saves the current state of achievements to local storage.
+ * Saves the current state of achievements to Firestore for a given user.
+ * @param userId The Firebase User ID.
  * @param achievements The array of Achievement objects to save.
  */
-export function saveAchievements(achievements: Achievement[]) {
-  if (typeof window === "undefined") return // Ensure this runs only in the browser
-  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(achievements))
+export async function saveAchievements(userId: string, achievements: Achievement[]) {
+  if (!userId) {
+    console.warn("Cannot save achievements: userId is null or undefined.")
+    return
+  }
+  await saveUserAchievements(userId, achievements) // Save to Firestore
 }
 
 /**
- * Checks if any achievements have been unlocked based on current analytics metrics.
+ * Checks if any achievements have been unlocked based on current analytics metrics for a given user.
+ * @param userId The Firebase User ID.
  * @returns An array of newly unlocked Achievement objects.
  */
-export function checkAndUnlockAchievements(): Achievement[] {
-  const currentAchievements = getAchievements()
-  const metrics = getAnalyticsMetrics()
+export async function checkAndUnlockAchievements(userId: string): Promise<Achievement[]> {
+  if (!userId) {
+    console.warn("Cannot check achievements: userId is null or undefined.")
+    return []
+  }
+
+  const currentAchievements = await getAchievements(userId) // Load from Firestore
+  const metrics = await getAnalyticsMetrics(userId) // Load analytics from Firestore
   const newlyUnlocked: Achievement[] = []
 
   const updatedAchievements = currentAchievements.map((ach) => {
@@ -143,16 +155,20 @@ export function checkAndUnlockAchievements(): Achievement[] {
   })
 
   if (newlyUnlocked.length > 0) {
-    saveAchievements(updatedAchievements)
+    await saveAchievements(userId, updatedAchievements) // Save to Firestore
   }
 
   return newlyUnlocked
 }
 
 /**
- * Clears all achievement data from local storage.
+ * Clears all achievement data from Firestore for a given user.
+ * @param userId The Firebase User ID.
  */
-export function clearAchievements() {
-  if (typeof window === "undefined") return // Ensure this runs only in the browser
-  localStorage.removeItem(LOCAL_STORAGE_KEY)
+export async function clearAchievements(userId: string) {
+  if (!userId) {
+    console.warn("Cannot clear achievements: userId is null or undefined.")
+    return
+  }
+  await clearAchievementsFirestore(userId) // Clear from Firestore
 }

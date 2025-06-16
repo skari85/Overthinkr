@@ -5,6 +5,7 @@ import {
   getAnalyticsMetrics,
   clearAnalyticsData,
   getDailyAnalyticsTrends,
+  getOverthinkingArchetype, // Import the new function
   type AnalyticsEntry,
   getAnalyticsData,
 } from "@/lib/analytics-utils"
@@ -13,37 +14,40 @@ import { Button } from "@/components/ui/button"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { PieChart, Pie, Cell, Legend } from "recharts"
-import { History, RefreshCcw, Trash2 } from "lucide-react"
+import { History, RefreshCcw, Trash2, Brain } from "lucide-react" // Import Brain icon
 import { toast } from "@/components/ui/use-toast"
-import { useAuth } from "@/contexts/auth-context" // Import useAuth
-import { Alert, AlertDescription } from "@/components/ui/alert" // Import Alert components
-import { AlertCircle } from "lucide-react" // Import AlertCircle
+import { useAuth } from "@/contexts/auth-context"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
 
 export default function AnalyticsPage() {
   const { user, loading: authLoading } = useAuth()
   const [analyticsData, setAnalyticsData] = useState<AnalyticsEntry[]>([])
   const [metrics, setMetrics] = useState({ totalConversations: 0, overthinkingCount: 0, validCount: 0 })
   const [dailyTrends, setDailyTrends] = useState([])
+  const [overthinkingArchetype, setOverthinkingArchetype] = useState("Loading...") // New state for archetype
   const [isLoadingData, setIsLoadingData] = useState(true)
 
   useEffect(() => {
     if (!authLoading) {
       loadAnalytics()
     }
-  }, [user, authLoading]) // Reload when user or authLoading changes
+  }, [user, authLoading])
 
   const loadAnalytics = async () => {
     setIsLoadingData(true)
     if (user?.uid) {
       const data = await getAnalyticsData(user.uid)
       setAnalyticsData(data)
-      setMetrics(await getAnalyticsMetrics(user.uid))
+      const fetchedMetrics = await getAnalyticsMetrics(user.uid)
+      setMetrics(fetchedMetrics)
       setDailyTrends(await getDailyAnalyticsTrends(user.uid))
+      setOverthinkingArchetype(getOverthinkingArchetype(fetchedMetrics)) // Set archetype
     } else {
-      // Clear data if no user is logged in
       setAnalyticsData([])
       setMetrics({ totalConversations: 0, overthinkingCount: 0, validCount: 0 })
       setDailyTrends([])
+      setOverthinkingArchetype("Log in to see your archetype!") // Default for logged out
     }
     setIsLoadingData(false)
   }
@@ -61,7 +65,7 @@ export default function AnalyticsPage() {
         description: "All your local analytics data has been removed.",
       })
     }
-    loadAnalytics() // Reload to show empty state
+    loadAnalytics()
   }
 
   const overthinkingPercentage =
@@ -138,6 +142,20 @@ export default function AnalyticsPage() {
                     </CardHeader>
                   </Card>
                 </div>
+
+                {/* New Card for Overthinking Archetype */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Brain className="h-5 w-5" />
+                      Your Overthinking Archetype
+                    </CardTitle>
+                    <CardDescription>A playful insight into your thought patterns.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-lg font-semibold text-center py-4">{overthinkingArchetype}</p>
+                  </CardContent>
+                </Card>
 
                 <Card>
                   <CardHeader>

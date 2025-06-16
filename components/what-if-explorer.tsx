@@ -13,26 +13,70 @@ import { useAPI } from "@/contexts/api-context"
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Textarea } from "@/components/ui/textarea"
+import { WhatIfMessage } from "./what-if-message"
+import type { Message as AIMessage } from "ai"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select" // Import Select components
+import { Label } from "@/components/ui/label" // Import Label
+import { aiPersonas, type AIPersonaId } from "@/lib/ai-personas" // Import personas
+import { guidedSessions } from "@/lib/guided-sessions" // Import guided sessions
+
+const WHAT_IF_MESSAGES_STORAGE_KEY = "overthinkr-what-if-messages"
+const WHAT_IF_PERSONA_STORAGE_KEY = "overthinkr-what-if-persona"
 
 export default function WhatIfExplorer() {
   const { selectedService, getActiveApiKey, isConfigured } = useAPI()
-  // State to hold the model, initialized to undefined (server-safe)
-  const [modelOverride, setModelOverride] = useState<string | undefined>(undefined)
-
-  useEffect(() => {
-    // This effect runs only on the client side after the component mounts
-    setModelOverride(localStorage.getItem(`overthinkr-model-${selectedService}`) || undefined)
-  }, [selectedService]) // Re-run if selectedService changes
-
-  const { messages, input, handleInputChange, handleSubmit, setMessages, reload, isLoading } = useChat({
+  const [initialMessages, setInitialMessages] = useState<AIMessage[]>([])
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [selectedPersonaId, setSelectedPersonaId] = useState<AIPersonaId>("default") // State for selected persona
+  const { messages, input, handleInputChange, handleSubmit, setMessages, reload, isLoading, setInput } = useChat({
     api: "/api/chat",
     body: {
       service: selectedService,
       apiKey: getActiveApiKey(),
-      mode: "what-if", // Signal to the API that this is a "what-if" scenario
-      model: modelOverride, // Use the client-side state for the model
+      mode: "what-if", // Still signal "what-if" mode
+      personaId: selectedPersonaId, // Send the selected persona ID
     },
+    initialMessages: initialMessages,
   })
+
+  // Load messages and persona from local storage on initial mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedMessages = localStorage.getItem(WHAT_IF_MESSAGES_STORAGE_KEY)
+      if (storedMessages) {
+        try {
+          setInitialMessages(JSON.parse(storedMessages))
+        } catch (error) {
+          console.error("Failed to parse stored What If messages:", error)
+          setInitialMessages([])
+        }
+      }
+
+      const storedPersona = localStorage.getItem(WHAT_IF_PERSONA_STORAGE_KEY) as AIPersonaId
+      if (storedPersona && aiPersonas.some((p) => p.id === storedPersona)) {
+        setSelectedPersonaId(storedPersona)
+      } else {
+        setSelectedPersonaId("default") // Fallback to default if not found or invalid
+      }
+
+      setIsLoaded(true)
+    }
+  }, [])
+
+  // Save messages to local storage whenever messages state changes
+  useEffect(() => {
+    if (isLoaded && typeof window !== "undefined") {
+      localStorage.setItem(WHAT_IF_MESSAGES_STORAGE_KEY, JSON.stringify(messages))
+    }
+  }, [messages, isLoaded])
+
+  // Save selected persona to local storage whenever it changes
+  useEffect(() => {
+    if (isLoaded && typeof window !== "undefined") {
+      localStorage.setItem(WHAT_IF_PERSONA_STORAGE_KEY, selectedPersonaId)
+    }
+  }, [selectedPersonaId, isLoaded])
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [newMessageId, setNewMessageId] = useState<string | null>(null)
 
@@ -47,6 +91,10 @@ export default function WhatIfExplorer() {
         reload()
       }
     }
+  }
+
+  const handleGuidedSessionClick = (prompt: string) => {
+    setInput(prompt)
   }
 
   useEffect(() => {
@@ -64,6 +112,10 @@ export default function WhatIfExplorer() {
     }
   }, [messages])
 
+  if (!isLoaded) {
+    return null
+  }
+
   return (
     <div className="container mx-auto py-6 px-4 md:py-10">
       <div className="mx-auto max-w-3xl">
@@ -80,33 +132,51 @@ export default function WhatIfExplorer() {
           </CardHeader>
           <CardContent className="p-0">
             <ScrollArea className="h-[500px] md:h-[600px]">
-              <div className="p-4 space-y-4">
+              <div className="p-4 space-y-4" aria-live="polite">
                 {messages.length === 0 && (
-                  <div className="flex flex-col items-center justify-center h-96 text-center py-10 px-4">
+                  <div className="flex flex-col items-center justify-center h-full text-center py-10 px-4">
                     <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">
                       Explore Your "What Ifs"
                     </h3>
                     <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
-                      Type out a hypothetical situation you're overthinking, and let the AI help you break it down.
+                      Type out a hypothetical situation you're overthinking, or choose a guided session below.
                     </p>
-                    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 max-w-lg">
-                      <p className="text-sm text-gray-600 dark:text-gray-300 italic">
-                        Try asking something like: "What if I fail my job interview next week?" or "What if my friend
-                        gets mad at me for saying no?"
-                      </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg">
+                      {guidedSessions.map((session) => (
+                        <Card
+                          key={session.id}
+                          className="cursor-pointer hover:shadow-md transition-shadow"
+                          onClick={() => handleGuidedSessionClick(session.prompt)}
+                        >
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-base">{session.title}</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <CardDescription className="text-sm">{session.description}</CardDescription>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
                   </div>
                 )}
 
-                {messages.map((m) => (
-                  <Message
-                    key={m.id}
-                    content={m.content}
-                    role={m.role as "user" | "assistant"}
-                    isNew={m.id === newMessageId}
-                    messageId={m.id}
-                  />
-                ))}
+                {messages.map((m) =>
+                  m.role === "user" ? (
+                    <Message
+                      key={m.id}
+                      content={m.content}
+                      role={m.role as "user" | "assistant"}
+                      isNew={m.id === newMessageId}
+                    />
+                  ) : (
+                    <WhatIfMessage
+                      key={m.id}
+                      content={m.content}
+                      isNew={m.id === newMessageId}
+                      // You can pass onShare and showShareButton if needed for assistant messages
+                    />
+                  ),
+                )}
 
                 {isLoading && (
                   <div className="flex items-start gap-3">
@@ -120,6 +190,23 @@ export default function WhatIfExplorer() {
           </CardContent>
 
           <CardFooter className="border-t p-4 flex flex-col gap-3">
+            {/* Persona Selection */}
+            <div className="w-full space-y-2">
+              <Label htmlFor="ai-persona-select">AI Persona</Label>
+              <Select value={selectedPersonaId} onValueChange={(value: AIPersonaId) => setSelectedPersonaId(value)}>
+                <SelectTrigger id="ai-persona-select" className="w-full">
+                  <SelectValue placeholder="Select an AI persona" />
+                </SelectTrigger>
+                <SelectContent>
+                  {aiPersonas.map((persona) => (
+                    <SelectItem key={persona.id} value={persona.id}>
+                      {persona.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <form onSubmit={handleSubmit} className="flex w-full gap-2">
               <Textarea
                 className="flex-1 min-h-[40px] max-h-[150px]"
@@ -128,6 +215,7 @@ export default function WhatIfExplorer() {
                 onChange={handleInputChange}
                 disabled={isLoading || !isConfigured()}
                 rows={1}
+                aria-label="Describe your 'what if' scenario"
               />
               <TooltipProvider>
                 <Tooltip>
@@ -136,6 +224,7 @@ export default function WhatIfExplorer() {
                       type="submit"
                       disabled={isLoading || !input.trim() || !isConfigured()}
                       variant="customPrimary"
+                      aria-label="Analyze scenario"
                     >
                       <Send className="h-4 w-4" />
                       <span className="sr-only">Send</span>
@@ -158,6 +247,7 @@ export default function WhatIfExplorer() {
                       onClick={handleRerun}
                       disabled={isLoading || messages.length === 0}
                       className="h-9 w-9"
+                      aria-label="Rerun Last Query"
                     >
                       <RefreshCw className="h-4 w-4" />
                       <span className="sr-only">Rerun Last Query</span>
@@ -178,6 +268,7 @@ export default function WhatIfExplorer() {
                       onClick={handleClear}
                       disabled={isLoading || messages.length === 0}
                       className="h-9 w-9"
+                      aria-label="Clear Scenario"
                     >
                       <Trash2 className="h-4 w-4" />
                       <span className="sr-only">Clear Scenario</span>

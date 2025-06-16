@@ -1,7 +1,5 @@
-import OverthinkrChat from "@/components/overthinkr-chat"
 import type { Metadata } from "next"
-import { decodeSharedMessages } from "@/lib/share-utils"
-import { SharedContentView } from "@/components/shared-content-view" // Import the new component
+import ChatPageClient from "./ChatPageClient"
 
 export const metadata: Metadata = {
   title: "Chat",
@@ -11,16 +9,10 @@ export const metadata: Metadata = {
 interface ChatPageProps {
   searchParams?: {
     shared?: string
+    upgrade?: string // Add upgrade to searchParams type
   }
 }
 
 export default function ChatPage({ searchParams }: ChatPageProps) {
-  const encodedMessages = searchParams?.shared
-
-  if (encodedMessages) {
-    const decodedMessages = decodeSharedMessages(encodedMessages)
-    return <SharedContentView messages={decodedMessages || []} />
-  }
-
-  return <OverthinkrChat />
+  return <ChatPageClient searchParams={searchParams} />
 }

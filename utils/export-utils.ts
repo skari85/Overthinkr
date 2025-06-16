@@ -1,6 +1,7 @@
 import type { Message } from "ai"
+import html2canvas from "html2canvas" // Assuming html2canvas is available
 
-export type ExportFormat = "text" | "json" | "markdown"
+export type ExportFormat = "text" | "json" | "markdown" | "image" // Added 'image'
 
 export function formatConversation(messages: Message[], format: ExportFormat): string {
   if (format === "json") {
@@ -60,4 +61,28 @@ export function copyToClipboard(text: string): Promise<boolean> {
       )
     }
   })
+}
+
+/**
+ * Generates an image from a given HTML element and triggers a download.
+ * @param element The HTML element to capture.
+ * @param filename The desired filename for the downloaded image.
+ */
+export async function downloadImage(element: HTMLElement, filename: string) {
+  try {
+    const canvas = await html2canvas(element, {
+      useCORS: true, // Important for images loaded from different origins (like placeholder.svg)
+      backgroundColor: null, // Keep background transparent if not explicitly set
+    })
+    const image = canvas.toDataURL("image/png")
+    const link = document.createElement("a")
+    link.href = image
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  } catch (error) {
+    console.error("Error generating image:", error)
+    throw new Error("Failed to generate image.")
+  }
 }
