@@ -16,21 +16,25 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ShareDialog } from "@/components/share-dialog"
 import { toast } from "@/components/ui/use-toast"
 import { saveClassification } from "@/lib/analytics-utils"
-import { checkAndUnlockAchievements } from "@/lib/achievements-utils" // Import achievement utility
+import { checkAndUnlockAchievements } from "@/lib/achievements-utils"
 import { generateShareLink } from "@/lib/share-utils"
 import { copyToClipboard } from "@/utils/export-utils"
 import type { Message as AIMessage } from "ai"
 import Link from "next/link"
 import { APIConfig } from "@/components/api-config"
+import { useAuth } from "@/contexts/auth-context" // Import useAuth
+import { loadConversation, saveConversation, clearConversation } from "@/lib/firestore-utils" // Import Firestore utils
 
 interface OverthinkrChatProps {
   sharedMessages?: AIMessage[] | null
 }
 
-const LOCAL_STORAGE_CHAT_KEY = "overthinkr-chat-history"
+// Removed LOCAL_STORAGE_CHAT_KEY
 
 export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) {
-  const { selectedService, getActiveApiKey, isConfigured, isPremium } = useAPI() // Get isPremium
+  const { selectedService, getActiveApiKey, isConfigured } = useAPI()
+  const { user, loading: authLoading } = useAuth() // Get user and authLoading from AuthContext
+
   const { messages, input, handleInputChange, handleSubmit, setMessages, reload, isLoading, setInput } = useChat({
     api: "/api/chat",
     body: {
@@ -45,7 +49,6 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
       } else if (content.startsWith("nah, this might be valid")) {
         saveClassification("valid")
       }
-      // Check for newly unlocked achievements after classification is saved
       const newlyUnlocked = checkAndUnlockAchievements()
       newlyUnlocked.forEach((ach) => {
         toast({
@@ -55,44 +58,56 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
         })
       })
     },
-  })
-
-  // State to hold initial messages loaded from local storage
-  const [initialMessagesLoaded, setInitialMessagesLoaded] = useState(false)
-
-  // Load messages from local storage on component mount
-  useEffect(() => {
-    if (typeof window !== "undefined" && !initialMessagesLoaded) {
-      const savedChat = localStorage.getItem(LOCAL_STORAGE_CHAT_KEY)
-      if (savedChat) {
-        try {
-          setMessages(JSON.parse(savedChat))
-        } catch (e) {
-          console.error("Failed to parse saved chat history:", e)
-          localStorage.removeItem(LOCAL_STORAGE_CHAT_KEY) // Clear corrupted data
-        }
+    // Use onMessagesChange to save to Firestore
+    onMessagesChange: (currentMessages) => {
+      if (user?.uid) {
+        // Debounce saving to avoid too many writes
+        const debounceSave = setTimeout(() => {
+          saveConversation(user.uid, currentMessages)
+        }, 500) // Save 500ms after messages stop changing
+        return () => clearTimeout(debounceSave)
       }
-      setInitialMessagesLoaded(true)
-    }
-  }, [setMessages, initialMessagesLoaded])
-
-  // Save messages to local storage whenever the messages array changes
-  useEffect(() => {
-    if (initialMessagesLoaded && messages.length > 0) {
-      localStorage.setItem(LOCAL_STORAGE_CHAT_KEY, JSON.stringify(messages))
-    } else if (initialMessagesLoaded && messages.length === 0) {
-      // If messages become empty, clear local storage
-      localStorage.removeItem(LOCAL_STORAGE_CHAT_KEY)
-    }
-  }, [messages, initialMessagesLoaded])
+    },
+  })
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [newMessageId, setNewMessageId] = useState<string | null>(null)
   const [shareAllDialogOpen, setShareAllDialogOpen] = useState(false)
+  const [isChatLoaded, setIsChatLoaded] = useState(false) // To prevent saving empty array on initial load
 
-  const handleClearChat = () => {
-    setMessages([])
-    // Local storage is cleared by the useEffect above when messages become empty
+  // Load messages from Firestore on component mount or user change
+  useEffect(() => {
+    const loadChat = async () => {
+      if (user?.uid && !isChatLoaded) {
+        const savedChat = await loadConversation(user.uid)
+        setMessages(savedChat)
+        setIsChatLoaded(true)
+      } else if (!user?.uid && isChatLoaded) {
+        // If user logs out, clear messages from UI
+        setMessages([])
+        setIsChatLoaded(false)
+      }
+    }
+    if (!authLoading) {
+      // Only try to load if auth state is known
+      loadChat()
+    }
+  }, [user, authLoading, setMessages, isChatLoaded])
+
+  const handleClearChat = async () => {
+    if (user?.uid) {
+      await clearConversation(user.uid)
+      toast({
+        title: "Chat Cleared",
+        description: "Your conversation has been removed from the cloud.",
+      })
+    } else {
+      toast({
+        title: "Chat Cleared Locally",
+        description: "Your conversation has been cleared from this browser.",
+      })
+    }
+    setMessages([]) // Clear messages from UI
   }
 
   const handleRerun = () => {
@@ -102,39 +117,6 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
         reload()
       }
     }
-  }
-
-  const handleReframingRequest = (messageId: string) => {
-    const messageIndex = messages.findIndex((m) => m.id === messageId)
-    if (messageIndex === -1) return
-
-    // Find the user's question that led to this AI reply
-    let startIndex = messageIndex
-    while (startIndex >= 0 && messages[startIndex].role !== "user") {
-      startIndex--
-    }
-    if (startIndex < 0) startIndex = messageIndex // Fallback if no user message found before AI reply
-
-    const originalUserMessage = messages[startIndex]?.content || ""
-
-    toast({
-      title: "Reframing for Clarity!",
-      description: "Simulating $1 payment. Your response is being re-analyzed.",
-      duration: 3000,
-    })
-
-    // Add a new user message to trigger a re-run with reframing intent
-    const newMessages = [
-      ...messages.slice(0, messageIndex + 1), // Keep original conversation up to the AI message
-      {
-        id: `reframe-${Date.now()}`,
-        role: "user",
-        content: `Reframe and provide extra clarity on my previous thought: "${originalUserMessage}"`,
-      } as AIMessage,
-    ]
-    setMessages(newMessages)
-    // Trigger reload with the new messages array
-    reload()
   }
 
   const handleShareAll = () => {
@@ -153,12 +135,11 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
     const messageIndex = messages.findIndex((m) => m.id === messageId)
     if (messageIndex === -1) return
 
-    // Find the user's question that led to this AI reply
     let startIndex = messageIndex
     while (startIndex >= 0 && messages[startIndex].role !== "user") {
       startIndex--
     }
-    if (startIndex < 0) startIndex = messageIndex // Fallback if no user message found before AI reply
+    if (startIndex < 0) startIndex = messageIndex
 
     const messagesToShare = messages.slice(startIndex, messageIndex + 1)
     const shareLink = generateShareLink(messagesToShare)
@@ -201,7 +182,6 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
     }
   }, [messages])
 
-  // If sharedMessages are provided, render only them
   if (sharedMessages) {
     return (
       <div className="container mx-auto py-6 px-4 md:py-10">
@@ -233,7 +213,6 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
     )
   }
 
-  // Default chat view
   return (
     <div className="container mx-auto py-6 px-4 md:py-10">
       <div className="mx-auto max-w-3xl">
@@ -262,12 +241,9 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
                     content={m.content}
                     role={m.role as "user" | "assistant"}
                     isNew={m.id === newMessageId}
-                    // Show share button only for AI messages that are not the last message (if loading)
-                    // and if there's a user message before it to form a pair
                     showShareButton={m.role === "assistant" && !isLoading && index > 0}
                     onShare={() => handleShareSpecificMessage(m.id)}
-                    showReframingButton={m.role === "assistant" && isPremium} // Show reframe button for premium users
-                    onReframingRequest={() => handleReframingRequest(m.id)}
+                    // Removed showReframingButton and onReframingRequest for now
                   />
                 ))}
 
@@ -283,6 +259,18 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
           </CardContent>
 
           <CardFooter className="border-t p-4 flex flex-col gap-3">
+            {!user && !authLoading && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-800 dark:text-blue-200 text-center">
+                <p>Login to save your chat history to the cloud!</p>
+                <Button
+                  variant="link"
+                  onClick={() => window.location.reload()}
+                  className="p-0 h-auto text-blue-800 dark:text-blue-200 underline"
+                >
+                  Click here to log in anonymously.
+                </Button>
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="flex w-full gap-2">
               <Input
                 className="flex-1"
