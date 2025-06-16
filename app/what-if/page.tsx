@@ -1,6 +1,6 @@
 import WhatIfExplorer from "@/components/what-if-explorer"
 import type { Metadata } from "next"
-import APIConfig from "@/components/api-config"
+import { APIConfig } from "@/components/api-config" // Corrected import: added curly braces
 
 export const metadata: Metadata = {
   title: "What If Explorer",
