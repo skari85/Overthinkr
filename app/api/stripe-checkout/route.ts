@@ -10,6 +10,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Server configuration error: Stripe key missing." }, { status: 500 })
   }
 
+  // Check if the key is actually a secret key (should start with 'sk_')
+  if (!stripeSecretKey.startsWith("sk_")) {
+    console.error(
+      "Invalid Stripe key format. Expected secret key starting with 'sk_', got:",
+      stripeSecretKey.substring(0, 7) + "...",
+    )
+    return NextResponse.json({ error: "Server configuration error: Invalid Stripe key format." }, { status: 500 })
+  }
+
   const stripe = new Stripe(stripeSecretKey, {
     apiVersion: "2024-04-10", // Use a recent Stripe API version
   })
@@ -34,7 +43,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url: session.url })
   } catch (err: any) {
-    console.error("Stripe checkout session creation error:", err)
+    console.error("Stripe checkout session creation error:", err.message)
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
