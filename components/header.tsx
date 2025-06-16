@@ -3,7 +3,7 @@
 import { ThemeToggle } from "@/components/theme-toggle"
 import Link from "next/link"
 import Image from "next/image"
-import { BarChart3, Palette, Lightbulb, Trophy, LayoutDashboard, Store, LogIn, LogOut } from "lucide-react" // Import LogIn, LogOut
+import { BarChart3, Palette, Lightbulb, Trophy, LayoutDashboard, Store, LogIn, LogOut, DollarSign } from "lucide-react" // Import LogIn, LogOut
 import { Button } from "@/components/ui/button" // Import Button
 import { useAuth } from "@/contexts/auth-context" // Import useAuth
 import { signInAnonymously, signOut } from "firebase/auth" // Import auth functions
@@ -103,6 +103,13 @@ export function Header() {
           >
             <Lightbulb className="h-5 w-5" />
             <span className="hidden sm:inline">What If</span>
+          </Link>
+          <Link
+            href="/subscribe"
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors flex items-center gap-1"
+          >
+            <DollarSign className="h-5 w-5" />
+            <span className="hidden sm:inline">Premium</span>
           </Link>
           <ThemeToggle />
           {/* Login/Logout Button */}
