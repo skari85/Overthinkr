@@ -1,7 +1,7 @@
 import { ThemeToggle } from "@/components/theme-toggle"
 import Link from "next/link"
 import Image from "next/image"
-import { BarChart3, Palette, Lightbulb, Trophy } from "lucide-react" // Import Trophy icon
+import { BarChart3, Palette, Lightbulb, Trophy, LayoutDashboard } from "lucide-react" // Import LayoutDashboard icon
 
 export function Header() {
   return (
@@ -18,6 +18,13 @@ export function Header() {
         </Link>
         <div className="flex items-center gap-4">
           <Link
+            href="/dashboard" // New link for Dashboard
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors flex items-center gap-1"
+          >
+            <LayoutDashboard className="h-5 w-5" />
+            <span className="hidden sm:inline">Dashboard</span>
+          </Link>
+          <Link
             href="/analytics"
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors flex items-center gap-1"
           >
@@ -25,7 +32,7 @@ export function Header() {
             <span className="hidden sm:inline">Analytics</span>
           </Link>
           <Link
-            href="/achievements" // New link for Achievements
+            href="/achievements"
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors flex items-center gap-1"
           >
             <Trophy className="h-5 w-5" />
