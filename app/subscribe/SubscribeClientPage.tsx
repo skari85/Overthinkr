@@ -3,47 +3,23 @@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Check, X } from "lucide-react"
-import { useState } from "react"
-import { toast } from "@/components/ui/use-toast"
+import { useState, useEffect } from "react" // Import useEffect
 
 export default function SubscribeClientPage() {
+  // No longer need isLoading state for the buy button, but keeping it for potential future use or if other async ops are added.
   const [isLoading, setIsLoading] = useState(false)
 
-  const handlePremiumCheckout = async () => {
-    setIsLoading(true)
-    try {
-      const response = await fetch("/api/stripe-checkout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        // If you have multiple premium tiers, you might send a priceId here:
-        // body: JSON.stringify({ priceId: 'your_premium_price_id' }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        // Redirect to the Stripe Checkout URL
-        window.location.href = data.url
-      } else {
-        toast({
-          title: "Checkout Failed",
-          description: data.error || "Could not initiate Stripe checkout. Please try again.",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error("Error during checkout:", error)
-      toast({
-        title: "Network Error",
-        description: "Could not connect to the server for checkout. Please check your internet connection.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
+  // Ensure the Stripe Buy Button script is loaded
+  useEffect(() => {
+    const scriptId = "stripe-buy-button-script"
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement("script")
+      script.id = scriptId
+      script.src = "https://js.stripe.com/v3/buy-button.js"
+      script.async = true
+      document.body.appendChild(script)
     }
-  }
+  }, [])
 
   return (
     <div className="container mx-auto py-6 px-4 md:py-10">
@@ -129,9 +105,14 @@ export default function SubscribeClientPage() {
               </div>
             </CardContent>
             <CardFooter className="pt-4">
-              <Button onClick={handlePremiumCheckout} disabled={isLoading} variant="customPrimary" className="w-full">
-                {isLoading ? "Redirecting..." : "Get Premium"}
-              </Button>
+              {/* Stripe Buy Button */}
+              <stripe-buy-button
+                buy-button-id="buy_btn_1RZ8MfE00WmbeLhMJmc72ER2"
+                publishable-key="pk_live_51RNfSGE00WmbeLhMiRZzXWIXLxV0vC1qqNcEa0UlMpUfbsaEGAx9GB2MX1QKZGU0fokXmEBOMaGS1V0D9woZyPY900UttZEhmz"
+                success-url={`${typeof window !== "undefined" ? window.location.origin : "https://overthinkr.vercel.app"}/success`}
+                cancel-url={`${typeof window !== "undefined" ? window.location.origin : "https://overthinkr.vercel.app"}/cancel`}
+                className="w-full" // Apply full width
+              ></stripe-buy-button>
             </CardFooter>
           </Card>
         </div>
