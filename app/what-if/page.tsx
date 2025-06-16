@@ -1,5 +1,6 @@
 import WhatIfExplorer from "@/components/what-if-explorer"
 import type { Metadata } from "next"
+import APIConfig from "@/components/api-config"
 
 export const metadata: Metadata = {
   title: "What If Explorer",
@@ -7,5 +8,12 @@ export const metadata: Metadata = {
 }
 
 export default function WhatIfPage() {
-  return <WhatIfExplorer />
+  return (
+    <div>
+      <WhatIfExplorer />
+      <div className="mt-4">
+        <APIConfig />
+      </div>
+    </div>
+  )
 }
