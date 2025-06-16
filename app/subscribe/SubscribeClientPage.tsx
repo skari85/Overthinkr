@@ -107,7 +107,7 @@ export default function SubscribeClientPage() {
             <CardFooter className="pt-4">
               {/* Stripe Buy Button */}
               <stripe-buy-button
-                buy-button-id="buy_btn_1RZ8MfE00WmbeLhMJmc72ER2"
+                buy-button-id="buy_btn_1RahNgE00WmbeLhMyj2tVPbo"
                 publishable-key="pk_live_51RNfSGE00WmbeLhMiRZzXWIXLxV0vC1qqNcEa0UlMpUfbsaEGAx9GB2MX1QKZGU0fokXmEBOMaGS1V0D9woZyPY900UttZEhmz"
                 success-url={`${typeof window !== "undefined" ? window.location.origin : "https://overthinkr.vercel.app"}/success`}
                 cancel-url={`${typeof window !== "undefined" ? window.location.origin : "https://overthinkr.vercel.app"}/cancel`}
