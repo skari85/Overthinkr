@@ -13,6 +13,8 @@ interface APIContextType {
   setOpenRouterApiKey: (key: string) => void
   getActiveApiKey: () => string
   isConfigured: () => boolean
+  isPremium: boolean // New: Premium status
+  setIsPremium: (value: boolean) => void // New: Setter for premium status
 }
 
 const APIContext = createContext<APIContextType | undefined>(undefined)
@@ -27,12 +29,14 @@ export function APIProvider({ children, initialGroqApiKey }: APIProviderProps) {
   // Initialize groqApiKey with the server-provided key, or from local storage
   const [groqApiKey, setGroqApiKey] = useState(initialGroqApiKey || "")
   const [openRouterApiKey, setOpenRouterApiKey] = useState("")
+  const [isPremium, setIsPremium] = useState(false) // New: Premium state
 
   // Load from localStorage on mount, but prioritize initialGroqApiKey
   useEffect(() => {
     const savedService = localStorage.getItem("overthinkr-service") as AIService
     const savedGroqKey = localStorage.getItem("overthinkr-groq-key")
     const savedOpenRouterKey = localStorage.getItem("overthinkr-openrouter-key")
+    const savedIsPremium = localStorage.getItem("overthinkr-is-premium")
 
     // If initialGroqApiKey is provided, it takes precedence and sets Groq as selected
     if (initialGroqApiKey) {
@@ -44,6 +48,7 @@ export function APIProvider({ children, initialGroqApiKey }: APIProviderProps) {
     }
 
     if (savedOpenRouterKey) setOpenRouterApiKey(savedOpenRouterKey)
+    if (savedIsPremium !== null) setIsPremium(JSON.parse(savedIsPremium)) // Load premium status
 
     // If no initialGroqApiKey and no saved service, use saved service
     if (!initialGroqApiKey && savedService) setSelectedService(savedService)
@@ -73,6 +78,11 @@ export function APIProvider({ children, initialGroqApiKey }: APIProviderProps) {
     }
   }, [openRouterApiKey])
 
+  // New: Save premium status to local storage
+  useEffect(() => {
+    localStorage.setItem("overthinkr-is-premium", JSON.stringify(isPremium))
+  }, [isPremium])
+
   const getActiveApiKey = () => {
     return selectedService === "groq" ? groqApiKey : openRouterApiKey
   }
@@ -93,6 +103,8 @@ export function APIProvider({ children, initialGroqApiKey }: APIProviderProps) {
         setOpenRouterApiKey,
         getActiveApiKey,
         isConfigured,
+        isPremium, // New: Provide premium status
+        setIsPremium, // New: Provide premium setter
       }}
     >
       {children}

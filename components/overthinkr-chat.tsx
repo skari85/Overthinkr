@@ -30,35 +30,14 @@ interface OverthinkrChatProps {
 const LOCAL_STORAGE_CHAT_KEY = "overthinkr-chat-history"
 
 export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) {
-  const { selectedService, getActiveApiKey, isConfigured } = useAPI()
-
-  // State to hold initial messages loaded from local storage
-  const [initialMessages, setInitialMessages] = useState<AIMessage[]>([])
-  const [isLoaded, setIsLoaded] = useState(false) // To ensure local storage is loaded before useChat
-
-  // Load messages from local storage on component mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedChat = localStorage.getItem(LOCAL_STORAGE_CHAT_KEY)
-      if (savedChat) {
-        try {
-          setInitialMessages(JSON.parse(savedChat))
-        } catch (e) {
-          console.error("Failed to parse saved chat history:", e)
-          localStorage.removeItem(LOCAL_STORAGE_CHAT_KEY) // Clear corrupted data
-        }
-      }
-    }
-    setIsLoaded(true)
-  }, [])
-
-  const { messages, input, handleInputChange, handleSubmit, setMessages, reload, isLoading } = useChat({
+  const { selectedService, getActiveApiKey, isConfigured, isPremium } = useAPI() // Get isPremium
+  const { messages, input, handleInputChange, handleSubmit, setMessages, reload, isLoading, setInput } = useChat({
     api: "/api/chat",
     body: {
       service: selectedService,
       apiKey: getActiveApiKey(),
     },
-    initialMessages: isLoaded ? initialMessages : [], // Only set initial messages once loaded
+    initialMessages: [], // Initial messages are loaded in useEffect
     onFinish: (message) => {
       const content = message.content.toLowerCase()
       if (content.startsWith("yep, you're overthinking")) {
@@ -78,15 +57,34 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
     },
   })
 
+  // State to hold initial messages loaded from local storage
+  const [initialMessagesLoaded, setInitialMessagesLoaded] = useState(false)
+
+  // Load messages from local storage on component mount
+  useEffect(() => {
+    if (typeof window !== "undefined" && !initialMessagesLoaded) {
+      const savedChat = localStorage.getItem(LOCAL_STORAGE_CHAT_KEY)
+      if (savedChat) {
+        try {
+          setMessages(JSON.parse(savedChat))
+        } catch (e) {
+          console.error("Failed to parse saved chat history:", e)
+          localStorage.removeItem(LOCAL_STORAGE_CHAT_KEY) // Clear corrupted data
+        }
+      }
+      setInitialMessagesLoaded(true)
+    }
+  }, [setMessages, initialMessagesLoaded])
+
   // Save messages to local storage whenever the messages array changes
   useEffect(() => {
-    if (isLoaded && messages.length > 0) {
+    if (initialMessagesLoaded && messages.length > 0) {
       localStorage.setItem(LOCAL_STORAGE_CHAT_KEY, JSON.stringify(messages))
-    } else if (isLoaded && messages.length === 0) {
+    } else if (initialMessagesLoaded && messages.length === 0) {
       // If messages become empty, clear local storage
       localStorage.removeItem(LOCAL_STORAGE_CHAT_KEY)
     }
-  }, [messages, isLoaded])
+  }, [messages, initialMessagesLoaded])
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [newMessageId, setNewMessageId] = useState<string | null>(null)
@@ -104,6 +102,39 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
         reload()
       }
     }
+  }
+
+  const handleReframingRequest = (messageId: string) => {
+    const messageIndex = messages.findIndex((m) => m.id === messageId)
+    if (messageIndex === -1) return
+
+    // Find the user's question that led to this AI reply
+    let startIndex = messageIndex
+    while (startIndex >= 0 && messages[startIndex].role !== "user") {
+      startIndex--
+    }
+    if (startIndex < 0) startIndex = messageIndex // Fallback if no user message found before AI reply
+
+    const originalUserMessage = messages[startIndex]?.content || ""
+
+    toast({
+      title: "Reframing for Clarity!",
+      description: "Simulating $1 payment. Your response is being re-analyzed.",
+      duration: 3000,
+    })
+
+    // Add a new user message to trigger a re-run with reframing intent
+    const newMessages = [
+      ...messages.slice(0, messageIndex + 1), // Keep original conversation up to the AI message
+      {
+        id: `reframe-${Date.now()}`,
+        role: "user",
+        content: `Reframe and provide extra clarity on my previous thought: "${originalUserMessage}"`,
+      } as AIMessage,
+    ]
+    setMessages(newMessages)
+    // Trigger reload with the new messages array
+    reload()
   }
 
   const handleShareAll = () => {
@@ -235,6 +266,8 @@ export default function OverthinkrChat({ sharedMessages }: OverthinkrChatProps) 
                     // and if there's a user message before it to form a pair
                     showShareButton={m.role === "assistant" && !isLoading && index > 0}
                     onShare={() => handleShareSpecificMessage(m.id)}
+                    showReframingButton={m.role === "assistant" && isPremium} // Show reframe button for premium users
+                    onReframingRequest={() => handleReframingRequest(m.id)}
                   />
                 ))}
 
