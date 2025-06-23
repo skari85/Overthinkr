@@ -18,7 +18,12 @@ export function PremiumUpgradeButton({ className, children }: PremiumUpgradeButt
   const [isLoading, setIsLoading] = useState(false)
 
   const handleUpgrade = async () => {
+    console.log("=== UPGRADE BUTTON CLICKED ===")
+    console.log("User:", user?.uid)
+    console.log("User email:", user?.email)
+
     if (!user) {
+      console.log("No user - redirecting to login")
       toast({
         title: "Login Required",
         description: "Please log in to upgrade to Premium.",
@@ -27,11 +32,24 @@ export function PremiumUpgradeButton({ className, children }: PremiumUpgradeButt
       return
     }
 
-    // Validate user email
-    if (!user.email) {
+    // Validate user email with better error message
+    if (!user.email || user.email.trim() === "") {
+      console.log("No email found for user")
       toast({
         title: "Email Required",
-        description: "Please ensure your account has a valid email address.",
+        description: "Please ensure your account has a valid email address. Try logging out and back in.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(user.email)) {
+      console.log("Invalid email format:", user.email)
+      toast({
+        title: "Invalid Email",
+        description: "Please ensure your account has a valid email format.",
         variant: "destructive",
       })
       return
@@ -103,17 +121,24 @@ export function PremiumUpgradeButton({ className, children }: PremiumUpgradeButt
         throw new Error(error.message)
       }
     } catch (error: any) {
-      console.error("Upgrade error:", error)
+      console.error("=== UPGRADE ERROR ===")
+      console.error("Error object:", error)
+      console.error("Error message:", error.message)
+      console.error("Error stack:", error.stack)
 
       // More specific error messages
       let errorMessage = "Something went wrong. Please try again."
 
-      if (error.message?.includes("pattern")) {
+      if (error.message?.includes("Failed to fetch")) {
+        errorMessage = "Network error. Please check your connection and try again."
+      } else if (error.message?.includes("pattern")) {
         errorMessage = "Invalid data format. Please contact support if this persists."
       } else if (error.message?.includes("price")) {
         errorMessage = "Pricing configuration error. Please contact support."
       } else if (error.message?.includes("email")) {
         errorMessage = "Invalid email format. Please check your account email."
+      } else if (error.message?.includes("Stripe")) {
+        errorMessage = "Payment system error. Please try again in a few minutes."
       } else if (error.message) {
         errorMessage = error.message
       }

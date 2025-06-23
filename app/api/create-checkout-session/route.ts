@@ -2,9 +2,16 @@ import { NextResponse } from "next/server"
 import Stripe from "stripe"
 
 export async function POST(request: Request) {
+  console.log("=== CHECKOUT SESSION API CALLED ===")
+
   try {
     const body = await request.json()
     const { idToken, userEmail, userId } = body
+
+    console.log("Request body received:")
+    console.log("- User ID:", userId)
+    console.log("- User Email:", userEmail)
+    console.log("- Has ID Token:", !!idToken)
 
     console.log("Creating checkout session...")
     console.log("User ID:", userId)
@@ -25,6 +32,14 @@ export async function POST(request: Request) {
     if (!/^[a-zA-Z0-9]+$/.test(userId)) {
       return NextResponse.json({ error: "Invalid user ID format" }, { status: 400 })
     }
+
+    // Validate environment variables
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error("STRIPE_SECRET_KEY not found in environment variables")
+      return NextResponse.json({ error: "Payment system configuration error" }, { status: 500 })
+    }
+
+    console.log("Environment check passed")
 
     // Initialize Stripe
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -61,13 +76,46 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ sessionId: session.id })
   } catch (error: any) {
-    console.error("Checkout session error:", error)
+    console.error("=== CHECKOUT SESSION ERROR ===")
+    console.error("Error type:", error.constructor.name)
+    console.error("Error message:", error.message)
+    console.error("Error code:", error.code)
+    console.error("Full error:", error)
 
     // More specific error handling
     if (error.type === "StripeInvalidRequestError") {
-      return NextResponse.json({ error: `Stripe error: ${error.message}` }, { status: 400 })
+      console.error("Stripe validation error:", error.message)
+      return NextResponse.json(
+        {
+          error: `Payment validation error: ${error.message}`,
+        },
+        { status: 400 },
+      )
     }
 
-    return NextResponse.json({ error: error.message || "Failed to create checkout session" }, { status: 500 })
+    if (error.code === "parameter_invalid_empty") {
+      return NextResponse.json(
+        {
+          error: "Missing required payment information",
+        },
+        { status: 400 },
+      )
+    }
+
+    if (error.message?.includes("price")) {
+      return NextResponse.json(
+        {
+          error: "Invalid price configuration",
+        },
+        { status: 400 },
+      )
+    }
+
+    return NextResponse.json(
+      {
+        error: error.message || "Failed to create checkout session",
+      },
+      { status: 500 },
+    )
   }
 }
