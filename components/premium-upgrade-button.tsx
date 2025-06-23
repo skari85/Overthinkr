@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
@@ -31,11 +30,13 @@ export function PremiumUpgradeButton({ className, children }: PremiumUpgradeButt
     setIsLoading(true)
 
     try {
-      // Get Firebase ID token
+      // Get Firebase ID token for secure authentication
       const idToken = await user.getIdToken()
 
-      // Create checkout session
-      const response = await fetch("/api/create-checkout-session", {
+      console.log("Creating checkout session for user:", user.uid)
+
+      // Try the secure endpoint first
+      let response = await fetch("/api/create-checkout-session", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -43,7 +44,23 @@ export function PremiumUpgradeButton({ className, children }: PremiumUpgradeButt
         body: JSON.stringify({ idToken }),
       })
 
-      const data = await response.json()
+      let data = await response.json()
+
+      // If Firebase Admin isn't available, fall back to simple checkout
+      if (data.fallback || !response.ok) {
+        console.log("Falling back to simple checkout")
+        response = await fetch("/api/create-checkout-session-simple", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userEmail: user.email,
+            userId: user.uid,
+          }),
+        })
+        data = await response.json()
+      }
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to create checkout session")
@@ -54,6 +71,8 @@ export function PremiumUpgradeButton({ className, children }: PremiumUpgradeButt
       if (!stripe) {
         throw new Error("Stripe failed to load")
       }
+
+      console.log("Redirecting to checkout:", data.sessionId)
 
       const { error } = await stripe.redirectToCheckout({
         sessionId: data.sessionId,
