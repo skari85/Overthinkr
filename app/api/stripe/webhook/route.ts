@@ -36,7 +36,7 @@ export async function POST(req: Request) {
   switch (event.type) {
     case "checkout.session.completed":
       const session = event.data.object as Stripe.CheckoutSession
-      console.log(`Checkout session completed for session ID: ${session.id}`)
+      console.log(`✅ Test Checkout session completed for session ID: ${session.id}`)
 
       // Get user ID from metadata (you'll need to pass this when creating the checkout session)
       const userId = session.metadata?.userId
@@ -55,6 +55,7 @@ export async function POST(req: Request) {
               stripeCustomerId: session.customer,
               premiumStartDate: new Date(),
               lastUpdated: new Date(),
+              testMode: true, // Mark as test transaction
             })
           } else {
             // Create new user document
@@ -64,21 +65,22 @@ export async function POST(req: Request) {
               premiumStartDate: new Date(),
               createdAt: new Date(),
               lastUpdated: new Date(),
+              testMode: true, // Mark as test transaction
             })
           }
 
-          console.log(`User ${userId} updated to premium status in Firestore.`)
+          console.log(`✅ Test: User ${userId} updated to premium status in Firestore.`)
         } catch (firestoreError) {
-          console.error("Error updating user premium status in Firestore:", firestoreError)
+          console.error("❌ Error updating user premium status in Firestore:", firestoreError)
         }
       } else {
-        console.warn("No user ID found in session metadata. Cannot update premium status.")
+        console.warn("⚠️ No user ID found in session metadata. Cannot update premium status.")
       }
       break
 
     case "payment_intent.succeeded":
       const paymentIntent = event.data.object as Stripe.PaymentIntent
-      console.log(`PaymentIntent ${paymentIntent.id} succeeded!`)
+      console.log(`✅ Test PaymentIntent ${paymentIntent.id} succeeded!`)
       break
 
     case "customer.subscription.deleted":
@@ -87,11 +89,11 @@ export async function POST(req: Request) {
       const customerId = deletedSubscription.customer as string
 
       // You would need to find the user by stripeCustomerId and update their premium status
-      console.log(`Subscription deleted for customer: ${customerId}`)
+      console.log(`❌ Test: Subscription deleted for customer: ${customerId}`)
       break
 
     default:
-      console.log(`Unhandled event type ${event.type}`)
+      console.log(`ℹ️ Unhandled event type ${event.type}`)
   }
 
   return new NextResponse("Received", { status: 200 })

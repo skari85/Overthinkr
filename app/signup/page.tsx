@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation"
 import {
   createUserWithEmailAndPassword,
   signInAnonymously,
-  GithubAuthProvider,
   GoogleAuthProvider,
   signInWithPopup,
   updateProfile,
@@ -19,7 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/use-toast"
 import Link from "next/link"
-import { UserPlus, LogIn, Github, Chrome, AlertTriangle } from "lucide-react"
+import { UserPlus, LogIn, Chrome, AlertTriangle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function SignupPage() {
@@ -162,61 +161,6 @@ export default function SignupPage() {
     }
   }
 
-  const handleGithubSignup = async () => {
-    setIsLoading(true)
-    setShowDomainError(false)
-    try {
-      const provider = new GithubAuthProvider()
-
-      // Use custom client ID if provided via environment variable
-      if (process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID) {
-        provider.setCustomParameters({
-          client_id: process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID,
-        })
-      }
-
-      provider.addScope("user:email")
-      provider.addScope("read:user")
-
-      const result = await signInWithPopup(auth, provider)
-      console.log("GitHub signup successful:", result.user)
-      toast({
-        title: "Registration Successful!",
-        description: "Your account has been created with GitHub. Welcome to Overthinkr!",
-      })
-      router.push("/chat")
-    } catch (error: any) {
-      console.error("Error signing up with GitHub:", error)
-
-      let errorMessage = "An unexpected error occurred. Please try again."
-
-      if (error.code === "auth/configuration-not-found") {
-        setShowDomainError(true)
-        errorMessage = "GitHub sign-up is not properly configured. Please use email/password signup or contact support."
-      } else if (error.code === "auth/unauthorized-domain") {
-        setShowDomainError(true)
-        errorMessage =
-          "This domain is not authorized for GitHub sign-in. Please use email/password signup or contact support."
-      } else if (error.code === "auth/popup-closed-by-user") {
-        errorMessage = "Sign-up was cancelled. Please try again."
-      } else if (error.code === "auth/popup-blocked") {
-        errorMessage = "Pop-up was blocked by your browser. Please allow pop-ups and try again."
-      } else if (error.code === "auth/account-exists-with-different-credential") {
-        errorMessage = "An account already exists with the same email address but different sign-in credentials."
-      } else if (error.code === "auth/invalid-oauth-client-id") {
-        errorMessage = "OAuth client configuration error. Please contact support."
-      }
-
-      toast({
-        title: "GitHub Sign Up Failed",
-        description: errorMessage,
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   const handleAnonymousSignup = async () => {
     setIsLoading(true)
     try {
@@ -338,16 +282,6 @@ export default function SignupPage() {
             >
               <Chrome className="h-5 w-5" />
               {isLoading ? "Signing Up..." : "Sign up with Google"}
-            </Button>
-
-            <Button
-              type="button"
-              onClick={handleGithubSignup}
-              className="w-full flex items-center justify-center gap-2 bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 disabled:opacity-50"
-              disabled={isLoading}
-            >
-              <Github className="h-5 w-5" />
-              {isLoading ? "Signing Up..." : "Sign up with GitHub"}
             </Button>
 
             <Button

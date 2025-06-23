@@ -34,8 +34,11 @@ export default function SubscribeClientPage() {
     <div className="container mx-auto py-6 px-4 md:py-10">
       <div className="mx-auto max-w-4xl text-center">
         <h1 className="text-3xl font-bold text-overthinkr-600 mb-2">Unlock Premium Insights</h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-8">
+        <p className="text-gray-600 dark:text-gray-400 mb-2">
           Upgrade to Overthinkr Premium for advanced features and deeper analysis.
+        </p>
+        <p className="text-sm text-orange-600 dark:text-orange-400 mb-8 font-medium">
+          🧪 Test Mode: Use test card 4242 4242 4242 4242 with any future date and CVC
         </p>
 
         <div className="grid gap-6 md:grid-cols-2">
@@ -121,16 +124,35 @@ export default function SubscribeClientPage() {
                   Current Plan
                 </Button>
               ) : (
-                <stripe-buy-button
-                  buy-button-id="buy_btn_1RaiQ5E00WmbeLhMLbXb1qO5"
-                  publishable-key="pk_live_51RNfSGE00WmbeLhMiRZzXWIXLxV0vC1qqNcEa0UlMpUfbsaEGAx9GB2MX1QKZGU0fokXmEBOMaGS1V0D9woZyPY900UttZEhmz"
-                  success-url="https://overthinkr.xyz/chat?upgrade=success"
-                  cancel-url="https://overthinkr.xyz/cancel"
-                  className="w-full"
-                ></stripe-buy-button>
+                <div className="w-full">
+                  <stripe-buy-button
+                    buy-button-id="buy_btn_1RdGZvEES22QZElqh3u98g0v"
+                    publishable-key="pk_test_51RabEeEES22QZElq7Tfsx2O7ucsjDV0nkYjLA6Qg3ZZ8707A2LV1IhxTmvAaTeRspvktmO081snZm08bl5CpdWRW00VXr61k70"
+                  ></stripe-buy-button>
+                </div>
               )}
             </CardFooter>
           </Card>
+        </div>
+
+        {/* Test Instructions */}
+        <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-200 mb-2">🧪 Test Payment Instructions</h3>
+          <div className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+            <p>
+              <strong>Test Card Number:</strong> 4242 4242 4242 4242
+            </p>
+            <p>
+              <strong>Expiry:</strong> Any future date (e.g., 12/25)
+            </p>
+            <p>
+              <strong>CVC:</strong> Any 3 digits (e.g., 123)
+            </p>
+            <p>
+              <strong>ZIP:</strong> Any 5 digits (e.g., 12345)
+            </p>
+            <p className="mt-2 text-xs">This is a test environment - no real charges will be made.</p>
+          </div>
         </div>
       </div>
     </div>
