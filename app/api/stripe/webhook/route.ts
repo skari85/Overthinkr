@@ -36,60 +36,77 @@ export async function POST(req: Request) {
   switch (event.type) {
     case "checkout.session.completed":
       const session = event.data.object as Stripe.CheckoutSession
-      console.log(`✅ Test Checkout session completed for session ID: ${session.id}`)
+      console.log(`✅ Checkout session completed for session ID: ${session.id}`)
 
-      // Get user ID from metadata (you'll need to pass this when creating the checkout session)
+      // Get user ID from metadata - THIS IS CRITICAL!
       const userId = session.metadata?.userId
+      const userEmail = session.metadata?.userEmail
 
-      if (userId) {
-        try {
-          const userRef = doc(db, "users", userId)
+      if (!userId) {
+        console.error("❌ No user ID found in session metadata. Cannot update premium status.")
+        return new NextResponse("No user ID in metadata", { status: 400 })
+      }
 
-          // Check if user document exists
-          const userSnap = await getDoc(userRef)
+      try {
+        const userRef = doc(db, "users", userId)
 
-          if (userSnap.exists()) {
-            // Update existing user
-            await updateDoc(userRef, {
-              isPremium: true,
-              stripeCustomerId: session.customer,
-              premiumStartDate: new Date(),
-              lastUpdated: new Date(),
-              testMode: true, // Mark as test transaction
-            })
-          } else {
-            // Create new user document
-            await setDoc(userRef, {
-              isPremium: true,
-              stripeCustomerId: session.customer,
-              premiumStartDate: new Date(),
-              createdAt: new Date(),
-              lastUpdated: new Date(),
-              testMode: true, // Mark as test transaction
-            })
-          }
+        // Check if user document exists
+        const userSnap = await getDoc(userRef)
 
-          console.log(`✅ Test: User ${userId} updated to premium status in Firestore.`)
-        } catch (firestoreError) {
-          console.error("❌ Error updating user premium status in Firestore:", firestoreError)
+        const userData = {
+          isPremium: true,
+          stripeCustomerId: session.customer,
+          stripeSessionId: session.id,
+          premiumStartDate: new Date(),
+          lastUpdated: new Date(),
+          subscriptionStatus: "active",
+          // Keep test mode flag if in test environment
+          ...(process.env.NODE_ENV === "development" && { testMode: true }),
         }
-      } else {
-        console.warn("⚠️ No user ID found in session metadata. Cannot update premium status.")
+
+        if (userSnap.exists()) {
+          // Update existing user
+          await updateDoc(userRef, userData)
+        } else {
+          // Create new user document
+          await setDoc(userRef, {
+            email: userEmail,
+            createdAt: new Date(),
+            ...userData,
+          })
+        }
+
+        console.log(`✅ User ${userId} (${userEmail}) updated to premium status in Firestore.`)
+      } catch (firestoreError) {
+        console.error("❌ Error updating user premium status in Firestore:", firestoreError)
+        return new NextResponse("Database update failed", { status: 500 })
       }
       break
 
-    case "payment_intent.succeeded":
-      const paymentIntent = event.data.object as Stripe.PaymentIntent
-      console.log(`✅ Test PaymentIntent ${paymentIntent.id} succeeded!`)
+    case "customer.subscription.updated":
+      const updatedSubscription = event.data.object as Stripe.Subscription
+      console.log(`📝 Subscription updated: ${updatedSubscription.id}`)
+
+      // Handle subscription status changes
+      const customerId = updatedSubscription.customer as string
+      // You'd need to find user by stripeCustomerId and update status
       break
 
     case "customer.subscription.deleted":
-      // Handle subscription cancellation
       const deletedSubscription = event.data.object as Stripe.Subscription
-      const customerId = deletedSubscription.customer as string
+      const canceledCustomerId = deletedSubscription.customer as string
 
-      // You would need to find the user by stripeCustomerId and update their premium status
-      console.log(`❌ Test: Subscription deleted for customer: ${customerId}`)
+      console.log(`❌ Subscription canceled for customer: ${canceledCustomerId}`)
+
+      // Find user by stripeCustomerId and revoke premium access
+      // This would require a query to find the user document
+      break
+
+    case "invoice.payment_failed":
+      const failedInvoice = event.data.object as Stripe.Invoice
+      console.log(`💳 Payment failed for invoice: ${failedInvoice.id}`)
+
+      // Handle failed payments - maybe send email or update user status
       break
 
     default:
