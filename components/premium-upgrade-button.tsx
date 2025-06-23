@@ -27,6 +27,16 @@ export function PremiumUpgradeButton({ className, children }: PremiumUpgradeButt
       return
     }
 
+    // Validate user email
+    if (!user.email) {
+      toast({
+        title: "Email Required",
+        description: "Please ensure your account has a valid email address.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -34,6 +44,7 @@ export function PremiumUpgradeButton({ className, children }: PremiumUpgradeButt
       const idToken = await user.getIdToken()
 
       console.log("Creating checkout session for user:", user.uid)
+      console.log("User email:", user.email)
 
       // Try the secure endpoint first
       let response = await fetch("/api/create-checkout-session", {
@@ -41,7 +52,11 @@ export function PremiumUpgradeButton({ className, children }: PremiumUpgradeButt
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({
+          idToken,
+          userEmail: user.email,
+          userId: user.uid,
+        }),
       })
 
       let data = await response.json()
@@ -63,7 +78,12 @@ export function PremiumUpgradeButton({ className, children }: PremiumUpgradeButt
       }
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to create checkout session")
+        console.error("API Error:", data)
+        throw new Error(data.error || `Server error: ${response.status}`)
+      }
+
+      if (!data.sessionId) {
+        throw new Error("No session ID received from server")
       }
 
       // Redirect to Stripe Checkout
@@ -79,13 +99,28 @@ export function PremiumUpgradeButton({ className, children }: PremiumUpgradeButt
       })
 
       if (error) {
+        console.error("Stripe redirect error:", error)
         throw new Error(error.message)
       }
     } catch (error: any) {
       console.error("Upgrade error:", error)
+
+      // More specific error messages
+      let errorMessage = "Something went wrong. Please try again."
+
+      if (error.message?.includes("pattern")) {
+        errorMessage = "Invalid data format. Please contact support if this persists."
+      } else if (error.message?.includes("price")) {
+        errorMessage = "Pricing configuration error. Please contact support."
+      } else if (error.message?.includes("email")) {
+        errorMessage = "Invalid email format. Please check your account email."
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+
       toast({
         title: "Upgrade Failed",
-        description: error.message || "Something went wrong. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
