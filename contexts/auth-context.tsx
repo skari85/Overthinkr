@@ -1,13 +1,16 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { onAuthStateChanged, isSignInWithEmailLink, signInWithEmailLink, type User } from "firebase/auth" // Added email link imports
-import { auth } from "@/lib/firebase" // Import Firebase auth instance
-import { toast } from "@/components/ui/use-toast" // Import toast for notifications
+import { onAuthStateChanged, isSignInWithEmailLink, signInWithEmailLink, type User } from "firebase/auth"
+import { doc, getDoc, setDoc } from "firebase/firestore"
+import { auth, db } from "@/lib/firebase"
+import { toast } from "@/components/ui/use-toast"
 
 interface AuthContextType {
   user: User | null
   loading: boolean
+  isPremium: boolean
+  refreshUserData: () => Promise<void> // Add function to refresh user data
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -15,31 +18,61 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isPremium, setIsPremium] = useState(false)
+
+  const refreshUserData = async () => {
+    if (user?.uid) {
+      try {
+        const userRef = doc(db, "users", user.uid)
+        const userSnap = await getDoc(userRef)
+        if (userSnap.exists()) {
+          setIsPremium(userSnap.data().isPremium || false)
+        } else {
+          // Create user document if it doesn't exist
+          await setDoc(userRef, {
+            email: user.email,
+            displayName: user.displayName,
+            isPremium: false,
+            createdAt: new Date(),
+            lastLoginAt: new Date(),
+          })
+          setIsPremium(false)
+        }
+      } catch (error) {
+        console.error("Error fetching/creating user data:", error)
+        setIsPremium(false)
+      }
+    }
+  }
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser)
       setLoading(false)
+
+      if (currentUser) {
+        await refreshUserData()
+      } else {
+        setIsPremium(false)
+      }
     })
 
     // Handle sign-in with email link
-    if (isSignInWithEmailLink(auth, window.location.href)) {
+    if (typeof window !== "undefined" && isSignInWithEmailLink(auth, window.location.href)) {
       let email = window.localStorage.getItem("emailForSignIn")
       if (!email) {
-        // User opened the link on a different device or cleared local storage.
-        // Prompt for email to prevent session fixation attacks.
         email = window.prompt("Please provide your email for confirmation")
       }
 
       if (email) {
         signInWithEmailLink(auth, email, window.location.href)
-          .then((result) => {
+          .then(async (result) => {
             window.localStorage.removeItem("emailForSignIn")
             toast({
               title: "Login Successful!",
               description: "You have been logged in via email link.",
             })
-            // Optionally redirect, e.g., to /chat
+            // Clean up URL
             window.history.replaceState({}, document.title, "/chat")
           })
           .catch((error) => {
@@ -49,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               description: error.message || "Invalid or expired email link. Please try again.",
               variant: "destructive",
             })
-            window.localStorage.removeItem("emailForSignIn") // Clear even on error
+            window.localStorage.removeItem("emailForSignIn")
           })
       } else {
         toast({
@@ -60,11 +93,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Cleanup subscription on unmount
     return () => unsubscribe()
-  }, []) // Empty dependency array ensures this runs once on mount
+  }, [user?.uid])
 
-  return <AuthContext.Provider value={{ user, loading }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, loading, isPremium, refreshUserData }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

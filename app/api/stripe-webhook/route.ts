@@ -1,10 +1,9 @@
 import Stripe from "stripe"
 import { NextResponse } from "next/server"
 import { headers } from "next/headers"
-import { db } from "@/lib/firebase" // Import Firestore DB
-import { doc, updateDoc } from "firebase/firestore" // Import Firestore functions
+import { db } from "@/lib/firebase"
+import { doc, updateDoc, setDoc, getDoc } from "firebase/firestore"
 
-// Initialize Stripe with your secret key
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-04-10",
 })
@@ -39,46 +38,61 @@ export async function POST(req: Request) {
       const session = event.data.object as Stripe.CheckoutSession
       console.log(`Checkout session completed for session ID: ${session.id}`)
 
-      // You can access customer information here, e.g., session.customer_details.email
-      // If you passed a customer ID or user ID in metadata during session creation,
-      // you would retrieve it here: session.metadata?.userId
-
-      // Example: Update user's premium status in Firestore
-      // This assumes you have a 'users' collection and a way to link Stripe customer to your user.
-      // For anonymous users, you might need to store the Stripe customer ID in their local storage
-      // or associate it with their anonymous Firebase UID if you have a mapping.
-      // For simplicity, let's assume we can get a userId from metadata or a lookup.
-      const userId = session.metadata?.userId || "anonymous_user_id_example" // Replace with actual user ID logic
+      // Get user ID from metadata (you'll need to pass this when creating the checkout session)
+      const userId = session.metadata?.userId
 
       if (userId) {
         try {
-          const userRef = doc(db, "users", userId) // Assuming a 'users' collection
-          await updateDoc(userRef, {
-            isPremium: true,
-            stripeCustomerId: session.customer, // Store Stripe Customer ID for future management
-            premiumStartDate: new Date(),
-          })
+          const userRef = doc(db, "users", userId)
+
+          // Check if user document exists
+          const userSnap = await getDoc(userRef)
+
+          if (userSnap.exists()) {
+            // Update existing user
+            await updateDoc(userRef, {
+              isPremium: true,
+              stripeCustomerId: session.customer,
+              premiumStartDate: new Date(),
+              lastUpdated: new Date(),
+            })
+          } else {
+            // Create new user document
+            await setDoc(userRef, {
+              isPremium: true,
+              stripeCustomerId: session.customer,
+              premiumStartDate: new Date(),
+              createdAt: new Date(),
+              lastUpdated: new Date(),
+            })
+          }
+
           console.log(`User ${userId} updated to premium status in Firestore.`)
         } catch (firestoreError) {
           console.error("Error updating user premium status in Firestore:", firestoreError)
-          // Consider logging this to a monitoring service
         }
       } else {
         console.warn("No user ID found in session metadata. Cannot update premium status.")
       }
-
-      // Fulfill the purchase here (e.g., grant access to premium features)
       break
+
     case "payment_intent.succeeded":
       const paymentIntent = event.data.object as Stripe.PaymentIntent
       console.log(`PaymentIntent ${paymentIntent.id} succeeded!`)
-      // Handle successful payment (e.g., update order status)
       break
-    // ... handle other event types
+
+    case "customer.subscription.deleted":
+      // Handle subscription cancellation
+      const deletedSubscription = event.data.object as Stripe.Subscription
+      const customerId = deletedSubscription.customer as string
+
+      // You would need to find the user by stripeCustomerId and update their premium status
+      console.log(`Subscription deleted for customer: ${customerId}`)
+      break
+
     default:
       console.log(`Unhandled event type ${event.type}`)
   }
 
-  // Return a 200 response to acknowledge receipt of the event
   return new NextResponse("Received", { status: 200 })
 }

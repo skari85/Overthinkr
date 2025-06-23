@@ -4,15 +4,15 @@ import { getAuth } from "firebase/auth"
 import { getFirestore } from "firebase/firestore"
 import { getStorage } from "firebase/storage"
 
-// Firebase configuration
+// Firebase configuration - Updated with your new project
 const firebaseConfig = {
-  apiKey: "AIzaSyASioCZ7-tEynXFVQA5DB8XqkHqKq9OaV0",
-  authDomain: "overthinkr-ae885.firebaseapp.com",
-  projectId: "overthinkr-ae885",
-  storageBucket: "overthinkr-ae885.appspot.com",
-  messagingSenderId: "976828352294",
-  appId: "1:976828352294:web:4175693776ad102d6523e7",
-  measurementId: "G-ZEWWW1KK6D",
+  apiKey: "AIzaSyDElkoHboShTMRtY5w-RTRR4cmmZbdefdM",
+  authDomain: "overthinkr-8a79c.firebaseapp.com",
+  projectId: "overthinkr-8a79c",
+  storageBucket: "overthinkr-8a79c.firebasestorage.app",
+  messagingSenderId: "501719963551",
+  appId: "1:501719963551:web:55aa75df800461215f8faa",
+  measurementId: "G-53EM1RDJL2",
 }
 
 // Initialize Firebase app

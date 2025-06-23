@@ -14,15 +14,16 @@ import {
   LogOut,
   DollarSign,
   UserPlus,
-} from "lucide-react" // Import UserPlus
+  Star,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
-import { signOut } from "firebase/auth" // Only signOut needed here
+import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { toast } from "@/components/ui/use-toast"
 
 export function Header() {
-  const { user, loading } = useAuth()
+  const { user, loading, isPremium } = useAuth() // Get isPremium
 
   const handleLogout = async () => {
     try {
@@ -93,17 +94,27 @@ export function Header() {
           </Link>
           <Link
             href="/what-if"
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors flex items-center gap-1"
+            className={`flex items-center gap-1 transition-colors ${
+              isPremium
+                ? "text-overthinkr-600 hover:text-overthinkr-700 dark:text-overthinkr-400 dark:hover:text-overthinkr-300"
+                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            }`}
           >
             <Lightbulb className="h-5 w-5" />
             <span className="hidden sm:inline">What If</span>
+            {isPremium && <Star className="h-3 w-3 fill-current text-yellow-400" />} {/* Star for premium */}
           </Link>
           <Link
             href="/subscribe"
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors flex items-center gap-1"
+            className={`flex items-center gap-1 transition-colors ${
+              isPremium
+                ? "text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
+                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            }`}
           >
             <DollarSign className="h-5 w-5" />
-            <span className="hidden sm:inline">Premium</span>
+            <span className="hidden sm:inline">{isPremium ? "Manage" : "Premium"}</span>
+            {isPremium && <Star className="h-3 w-3 fill-current text-yellow-400" />} {/* Star for premium */}
           </Link>
           <ThemeToggle />
           {/* Login/Logout/Signup Buttons */}

@@ -7,37 +7,50 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useEffect, useRef, useState } from "react"
 import { Message } from "@/components/message"
 import { TypingIndicator } from "@/components/typing-indicator"
-import { Send, Lightbulb, RefreshCw, Trash2 } from "lucide-react"
+import { Send, Lightbulb, RefreshCw, Trash2, Upload } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAPI } from "@/contexts/api-context"
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Textarea } from "@/components/ui/textarea"
 import { WhatIfMessage } from "./what-if-message"
+import { FileUpload } from "./file-upload"
 import type { Message as AIMessage } from "ai"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select" // Import Select components
-import { Label } from "@/components/ui/label" // Import Label
-import { aiPersonas, type AIPersonaId } from "@/lib/ai-personas" // Import personas
-import { guidedSessions } from "@/lib/guided-sessions" // Import guided sessions
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { aiPersonas, type AIPersonaId } from "@/lib/ai-personas"
+import { guidedSessions } from "@/lib/guided-sessions"
+import { useAuth } from "@/contexts/auth-context"
+import type { UploadResult } from "@/lib/storage-utils"
+import Link from "next/link"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 const WHAT_IF_MESSAGES_STORAGE_KEY = "overthinkr-what-if-messages"
 const WHAT_IF_PERSONA_STORAGE_KEY = "overthinkr-what-if-persona"
 
 export default function WhatIfExplorer() {
   const { selectedService, getActiveApiKey, isConfigured } = useAPI()
+  const { user, loading: authLoading, isPremium } = useAuth()
   const [initialMessages, setInitialMessages] = useState<AIMessage[]>([])
   const [isLoaded, setIsLoaded] = useState(false)
-  const [selectedPersonaId, setSelectedPersonaId] = useState<AIPersonaId>("default") // State for selected persona
+  const [selectedPersonaId, setSelectedPersonaId] = useState<AIPersonaId>("default")
+  const [uploadedFiles, setUploadedFiles] = useState<UploadResult[]>([])
+  const [showFileUpload, setShowFileUpload] = useState(false)
+
   const { messages, input, handleInputChange, handleSubmit, setMessages, reload, isLoading, setInput } = useChat({
     api: "/api/chat",
     body: {
       service: selectedService,
       apiKey: getActiveApiKey(),
-      mode: "what-if", // Still signal "what-if" mode
-      personaId: selectedPersonaId, // Send the selected persona ID
+      mode: "what-if",
+      personaId: selectedPersonaId,
+      uploadedFiles: uploadedFiles, // Include uploaded files in the request
     },
     initialMessages: initialMessages,
   })
+
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [newMessageId, setNewMessageId] = useState<string | null>(null)
 
   // Load messages and persona from local storage on initial mount
   useEffect(() => {
@@ -56,7 +69,7 @@ export default function WhatIfExplorer() {
       if (storedPersona && aiPersonas.some((p) => p.id === storedPersona)) {
         setSelectedPersonaId(storedPersona)
       } else {
-        setSelectedPersonaId("default") // Fallback to default if not found or invalid
+        setSelectedPersonaId("default")
       }
 
       setIsLoaded(true)
@@ -77,11 +90,9 @@ export default function WhatIfExplorer() {
     }
   }, [selectedPersonaId, isLoaded])
 
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [newMessageId, setNewMessageId] = useState<string | null>(null)
-
   const handleClear = () => {
     setMessages([])
+    setUploadedFiles([])
   }
 
   const handleRerun = () => {
@@ -95,6 +106,15 @@ export default function WhatIfExplorer() {
 
   const handleGuidedSessionClick = (prompt: string) => {
     setInput(prompt)
+  }
+
+  const handleFileUpload = (result: UploadResult) => {
+    setUploadedFiles((prev) => [...prev, result])
+    setInput((prev) => prev + `\n\n[Uploaded file: ${result.name}]`)
+  }
+
+  const removeUploadedFile = (index: number) => {
+    setUploadedFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
   useEffect(() => {
@@ -112,9 +132,11 @@ export default function WhatIfExplorer() {
     }
   }, [messages])
 
-  if (!isLoaded) {
+  if (!isLoaded || authLoading) {
     return null
   }
+
+  const isFeatureEnabled = isConfigured() && isPremium
 
   return (
     <div className="container mx-auto py-6 px-4 md:py-10">
@@ -126,8 +148,8 @@ export default function WhatIfExplorer() {
               "What If" Scenario Explorer
             </CardTitle>
             <CardDescription>
-              Input a hypothetical scenario, and the AI will help you explore potential outcomes, probabilities, and
-              coping strategies.
+              Input a hypothetical scenario, upload files for analysis, and the AI will help you explore potential
+              outcomes, probabilities, and coping strategies.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
@@ -139,7 +161,8 @@ export default function WhatIfExplorer() {
                       Explore Your "What Ifs"
                     </h3>
                     <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
-                      Type out a hypothetical situation you're overthinking, or choose a guided session below.
+                      Type out a hypothetical situation you're overthinking, upload files for analysis, or choose a
+                      guided session below.
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg">
                       {guidedSessions.map((session) => (
@@ -169,12 +192,7 @@ export default function WhatIfExplorer() {
                       isNew={m.id === newMessageId}
                     />
                   ) : (
-                    <WhatIfMessage
-                      key={m.id}
-                      content={m.content}
-                      isNew={m.id === newMessageId}
-                      // You can pass onShare and showShareButton if needed for assistant messages
-                    />
+                    <WhatIfMessage key={m.id} content={m.content} isNew={m.id === newMessageId} />
                   ),
                 )}
 
@@ -190,17 +208,74 @@ export default function WhatIfExplorer() {
           </CardContent>
 
           <CardFooter className="border-t p-4 flex flex-col gap-3">
+            {/* File Upload Section */}
+            <Collapsible open={showFileUpload} onOpenChange={setShowFileUpload}>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" className="w-full justify-between" disabled={!isFeatureEnabled}>
+                  <div className="flex items-center gap-2">
+                    <Upload className="h-4 w-4" />
+                    <span>Upload Files for Analysis</span>
+                  </div>
+                  {uploadedFiles.length > 0 && (
+                    <span className="text-xs bg-overthinkr-100 text-overthinkr-700 px-2 py-1 rounded">
+                      {uploadedFiles.length} file{uploadedFiles.length !== 1 ? "s" : ""}
+                    </span>
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-3">
+                <FileUpload
+                  onUploadComplete={handleFileUpload}
+                  disabled={!isFeatureEnabled}
+                  folder="what-if-analysis"
+                  allowedTypes={[
+                    "image/*",
+                    "text/*",
+                    "application/pdf",
+                    "application/msword",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                  ]}
+                  maxSizeInMB={25}
+                />
+                {uploadedFiles.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <Label>Uploaded Files:</Label>
+                    {uploadedFiles.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded"
+                      >
+                        <span className="text-sm">{file.name}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeUploadedFile(index)}
+                          disabled={!isFeatureEnabled}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CollapsibleContent>
+            </Collapsible>
+
             {/* Persona Selection */}
             <div className="w-full space-y-2">
               <Label htmlFor="ai-persona-select">AI Persona</Label>
-              <Select value={selectedPersonaId} onValueChange={(value: AIPersonaId) => setSelectedPersonaId(value)}>
+              <Select
+                value={selectedPersonaId}
+                onValueChange={(value: AIPersonaId) => setSelectedPersonaId(value)}
+                disabled={!isFeatureEnabled}
+              >
                 <SelectTrigger id="ai-persona-select" className="w-full">
                   <SelectValue placeholder="Select an AI persona" />
                 </SelectTrigger>
                 <SelectContent>
                   {aiPersonas.map((persona) => (
-                    <SelectItem key={persona.id} value={persona.id}>
-                      {persona.name}
+                    <SelectItem key={persona.id} value={persona.id} disabled={persona.isPremium && !isPremium}>
+                      {persona.name} {persona.isPremium && !isPremium && "(Premium)"}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -211,9 +286,11 @@ export default function WhatIfExplorer() {
               <Textarea
                 className="flex-1 min-h-[40px] max-h-[150px]"
                 value={input}
-                placeholder={isConfigured() ? "Describe your 'what if' scenario..." : "Configure API key first..."}
+                placeholder={
+                  isFeatureEnabled ? "Describe your 'what if' scenario..." : "Upgrade to Premium to use this feature."
+                }
                 onChange={handleInputChange}
-                disabled={isLoading || !isConfigured()}
+                disabled={isLoading || !isFeatureEnabled}
                 rows={1}
                 aria-label="Describe your 'what if' scenario"
               />
@@ -222,7 +299,7 @@ export default function WhatIfExplorer() {
                   <TooltipTrigger asChild>
                     <Button
                       type="submit"
-                      disabled={isLoading || !input.trim() || !isConfigured()}
+                      disabled={isLoading || !input.trim() || !isFeatureEnabled}
                       variant="customPrimary"
                       aria-label="Analyze scenario"
                     >
@@ -231,7 +308,7 @@ export default function WhatIfExplorer() {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>{isConfigured() ? "Analyze scenario" : "Configure API key first"}</p>
+                    <p>{isFeatureEnabled ? "Analyze scenario" : "Upgrade to Premium"}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -245,7 +322,7 @@ export default function WhatIfExplorer() {
                       variant="outline"
                       size="icon"
                       onClick={handleRerun}
-                      disabled={isLoading || messages.length === 0}
+                      disabled={isLoading || messages.length === 0 || !isFeatureEnabled}
                       className="h-9 w-9"
                       aria-label="Rerun Last Query"
                     >
@@ -254,7 +331,7 @@ export default function WhatIfExplorer() {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Rerun last query</p>
+                    <p>{isFeatureEnabled ? "Rerun last query" : "Upgrade to Premium"}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -266,7 +343,7 @@ export default function WhatIfExplorer() {
                       variant="outline"
                       size="icon"
                       onClick={handleClear}
-                      disabled={isLoading || messages.length === 0}
+                      disabled={isLoading || messages.length === 0 || !isFeatureEnabled}
                       className="h-9 w-9"
                       aria-label="Clear Scenario"
                     >
@@ -275,7 +352,7 @@ export default function WhatIfExplorer() {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Clear scenario</p>
+                    <p>{isFeatureEnabled ? "Clear scenario" : "Upgrade to Premium"}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -287,6 +364,20 @@ export default function WhatIfExplorer() {
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>Please configure your API key to use the "What If" explorer.</AlertDescription>
+              </Alert>
+            </div>
+          )}
+          {!isPremium && isConfigured() && (
+            <div className="border-t p-4 bg-blue-50 dark:bg-blue-900/20">
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  The "What If" Scenario Explorer and file upload are premium features.{" "}
+                  <Link href="/subscribe" className="underline font-medium">
+                    Upgrade to Premium
+                  </Link>{" "}
+                  to unlock them!
+                </AlertDescription>
               </Alert>
             </div>
           )}
