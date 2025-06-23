@@ -1,11 +1,11 @@
 import type { Metadata } from "next"
-import SuccessPageClient from "./SuccessPageClient"
+import PaymentSuccessClient from "./PaymentSuccessClient"
 
 export const metadata: Metadata = {
   title: "Payment Success - Overthinkr",
   description: "Your Overthinkr Premium subscription is now active!",
 }
 
-export default function SuccessPage() {
-  return <SuccessPageClient />
+export default function PaymentSuccessPage() {
+  return <PaymentSuccessClient />
 }

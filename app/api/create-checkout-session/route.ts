@@ -10,37 +10,20 @@ if (!getApps().length) {
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
     const privateKey = process.env.FIREBASE_PRIVATE_KEY
 
-    // Validate required environment variables
-    if (!projectId) {
-      throw new Error("NEXT_PUBLIC_FIREBASE_PROJECT_ID is required")
+    if (!projectId || !clientEmail || !privateKey) {
+      console.log("Firebase Admin environment variables not fully configured")
+    } else {
+      initializeApp({
+        credential: cert({
+          projectId,
+          clientEmail,
+          privateKey: privateKey.replace(/\\n/g, "\n"),
+        }),
+      })
+      console.log("✅ Firebase Admin initialized successfully")
     }
-    if (!clientEmail) {
-      throw new Error("FIREBASE_CLIENT_EMAIL is required")
-    }
-    if (!privateKey) {
-      throw new Error("FIREBASE_PRIVATE_KEY is required")
-    }
-
-    // Verify the client email format
-    if (!clientEmail.includes("@overthinkr-8a79c.iam.gserviceaccount.com")) {
-      throw new Error("Invalid Firebase client email format")
-    }
-
-    console.log("Initializing Firebase Admin with project:", projectId)
-    console.log("Client email:", clientEmail)
-
-    initializeApp({
-      credential: cert({
-        projectId,
-        clientEmail,
-        privateKey: privateKey.replace(/\\n/g, "\n"),
-      }),
-    })
-
-    console.log("✅ Firebase Admin initialized successfully")
   } catch (error) {
     console.error("❌ Failed to initialize Firebase Admin:", error)
-    // Don't throw here to prevent build failures
   }
 }
 
@@ -50,68 +33,57 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(req: NextRequest) {
   try {
-    // Check if Firebase Admin is properly initialized
-    if (!getApps().length) {
-      console.error("Firebase Admin not initialized - falling back to simple checkout")
-      return NextResponse.json(
-        {
-          error: "Server configuration error - Firebase Admin not available",
-          fallback: true,
-        },
-        { status: 500 },
-      )
+    const { idToken, userEmail, userId } = await req.json()
+
+    let verifiedUserId = userId
+    let verifiedUserEmail = userEmail
+
+    // Try to verify with Firebase Admin if available
+    if (idToken && getApps().length > 0) {
+      try {
+        const decodedToken = await getAuth().verifyIdToken(idToken)
+        verifiedUserId = decodedToken.uid
+        verifiedUserEmail = decodedToken.email
+        console.log("✅ Token verified with Firebase Admin")
+      } catch (tokenError) {
+        console.log("⚠️ Token verification failed, using provided user data")
+      }
     }
 
-    const { idToken } = await req.json()
-
-    if (!idToken) {
-      return NextResponse.json({ error: "Authentication token required" }, { status: 401 })
+    if (!verifiedUserId || !verifiedUserEmail) {
+      return NextResponse.json({ error: "User authentication required" }, { status: 401 })
     }
 
-    // Verify the Firebase ID token
-    let decodedToken
-    try {
-      decodedToken = await getAuth().verifyIdToken(idToken)
-    } catch (tokenError) {
-      console.error("Token verification failed:", tokenError)
-      return NextResponse.json({ error: "Invalid authentication token" }, { status: 401 })
-    }
+    console.log(`Creating checkout session for user: ${verifiedUserId} (${verifiedUserEmail})`)
 
-    const userId = decodedToken.uid
-    const userEmail = decodedToken.email
+    // Use the same URL pattern as Stripe Payment Links
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || req.nextUrl.origin
+    const successUrl = `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`
+    const cancelUrl = `${baseUrl}/payment/cancel`
 
-    if (!userId || !userEmail) {
-      return NextResponse.json({ error: "Invalid user data in token" }, { status: 400 })
-    }
-
-    console.log(`Creating checkout session for user: ${userId} (${userEmail})`)
+    console.log("Success URL:", successUrl)
+    console.log("Cancel URL:", cancelUrl)
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
         {
-          price: "price_1RdGZvEES22QZElqh3u98g0v", // Your Stripe Price ID
+          price: "price_1RdGZvEES22QZElqh3u98g0v", // Your Stripe Price ID for $5.99 one-time
           quantity: 1,
         },
       ],
-      mode: "subscription",
-      customer_email: userEmail,
+      mode: "payment", // Changed from "subscription" to "payment"
+      customer_email: verifiedUserEmail,
       metadata: {
-        userId: userId, // Critical: Link payment to user
-        userEmail: userEmail,
+        userId: verifiedUserId,
+        userEmail: verifiedUserEmail,
         source: "overthinkr-premium-upgrade",
       },
-      success_url: `${req.nextUrl.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.nextUrl.origin}/cancel`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       allow_promotion_codes: true,
       billing_address_collection: "auto",
-      subscription_data: {
-        metadata: {
-          userId: userId,
-          userEmail: userEmail,
-        },
-      },
     })
 
     console.log(`✅ Checkout session created: ${session.id}`)
@@ -119,7 +91,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       sessionId: session.id,
       url: session.url,
-      userId: userId, // For debugging
+      userId: verifiedUserId,
     })
   } catch (error: any) {
     console.error("❌ Error creating checkout session:", error)

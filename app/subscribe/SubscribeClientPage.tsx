@@ -4,6 +4,7 @@ import { PremiumUpgradeButton } from "@/components/premium-upgrade-button"
 import { useAuth } from "@/contexts/auth-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Check } from "lucide-react"
+import Link from "next/link"
 
 export default function SubscribeClientPage() {
   const { user } = useAuth()
@@ -30,8 +31,8 @@ export default function SubscribeClientPage() {
           <CardHeader>
             <CardTitle className="text-2xl">Premium Plan</CardTitle>
             <CardDescription>
-              <span className="text-3xl font-bold">$9.99</span>
-              <span className="text-muted-foreground">/month</span>
+              <span className="text-3xl font-bold">$5.99</span>
+              <span className="text-muted-foreground"> one-time</span>
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -49,13 +50,17 @@ export default function SubscribeClientPage() {
             </div>
 
             {!user && (
-              <p className="text-sm text-muted-foreground text-center mt-4">Please log in to upgrade to premium</p>
+              <p className="text-sm text-muted-foreground text-center mt-4">
+                <Link href="/login" className="text-blue-600 hover:text-blue-800 underline">
+                  Please log in to upgrade to premium
+                </Link>
+              </p>
             )}
           </CardContent>
         </Card>
 
         <div className="text-center text-sm text-muted-foreground">
-          <p>Cancel anytime. No hidden fees.</p>
+          <p>One-time payment. Lifetime access to premium features.</p>
         </div>
       </div>
     </div>

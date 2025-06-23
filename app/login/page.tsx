@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
   signInWithEmailAndPassword,
@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/use-toast"
 import Link from "next/link"
-import { LogIn, Mail, Chrome, AlertTriangle } from "lucide-react"
+import { LogIn, Mail, Chrome, AlertTriangle, Copy } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function LoginPage() {
@@ -27,7 +27,33 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [emailLinkSent, setEmailLinkSent] = useState(false)
   const [showDomainError, setShowDomainError] = useState(false)
+  const [currentDomain, setCurrentDomain] = useState("")
   const router = useRouter()
+
+  useEffect(() => {
+    // Get current domain for error display
+    if (typeof window !== "undefined") {
+      setCurrentDomain(window.location.hostname)
+    }
+  }, [])
+
+  const copyDomainToClipboard = async () => {
+    if (currentDomain) {
+      try {
+        await navigator.clipboard.writeText(currentDomain)
+        toast({
+          title: "Domain Copied",
+          description: `${currentDomain} copied to clipboard`,
+        })
+      } catch (error) {
+        toast({
+          title: "Copy Failed",
+          description: "Could not copy domain to clipboard",
+          variant: "destructive",
+        })
+      }
+    }
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -113,13 +139,12 @@ export default function LoginPage() {
 
       let errorMessage = "An unexpected error occurred. Please try again."
 
-      if (error.code === "auth/configuration-not-found") {
+      if (error.code === "auth/unauthorized-domain") {
         setShowDomainError(true)
-        errorMessage = "Google sign-in is not properly configured. Please use email/password login or contact support."
-      } else if (error.code === "auth/unauthorized-domain") {
+        errorMessage = `The domain "${currentDomain}" is not authorized for Google sign-in. Please use email/password login instead.`
+      } else if (error.code === "auth/configuration-not-found") {
         setShowDomainError(true)
-        errorMessage =
-          "This domain is not authorized for Google sign-in. Please use email/password login or contact support."
+        errorMessage = "Google sign-in is not properly configured. Please use email/password login."
       } else if (error.code === "auth/popup-closed-by-user") {
         errorMessage = "Sign-in was cancelled. Please try again."
       } else if (error.code === "auth/popup-blocked") {
@@ -215,15 +240,50 @@ export default function LoginPage() {
             <Alert className="border-orange-200 bg-orange-50 dark:bg-orange-900/20">
               <AlertTriangle className="h-4 w-4 text-orange-600" />
               <AlertDescription className="text-orange-800 dark:text-orange-200">
-                <strong>Domain Not Authorized:</strong> Social login is not available on this domain.
-                <br />
-                <span className="text-sm mt-1 block">
-                  Please use email/password login or contact support. The domain{" "}
-                  <code className="bg-orange-100 dark:bg-orange-800 px-1 rounded text-xs">
-                    {typeof window !== "undefined" ? window.location.hostname : ""}
-                  </code>{" "}
-                  needs to be authorized.
-                </span>
+                <div className="space-y-3">
+                  <div>
+                    <strong>Domain Not Authorized for Google Sign-in</strong>
+                    <br />
+                    <span className="text-sm">
+                      The domain{" "}
+                      <code className="bg-orange-100 dark:bg-orange-800 px-1 rounded text-xs font-mono">
+                        {currentDomain}
+                      </code>{" "}
+                      needs to be added to Firebase authorized domains.
+                    </span>
+                  </div>
+
+                  <div className="text-sm space-y-2">
+                    <p>
+                      <strong>Quick Fix:</strong>
+                    </p>
+                    <ol className="list-decimal list-inside space-y-1 text-xs">
+                      <li>
+                        Go to{" "}
+                        <a
+                          href="https://console.firebase.google.com"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline"
+                        >
+                          Firebase Console
+                        </a>
+                      </li>
+                      <li>Select your project → Authentication → Settings</li>
+                      <li>Add this domain to "Authorized domains":</li>
+                    </ol>
+                    <div className="flex items-center gap-2 bg-orange-100 dark:bg-orange-800 p-2 rounded">
+                      <code className="text-xs font-mono flex-1">{currentDomain}</code>
+                      <Button variant="ghost" size="sm" onClick={copyDomainToClipboard} className="h-6 w-6 p-0">
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="text-sm">
+                    <strong>Alternative:</strong> Use email/password login below (works on any domain)
+                  </div>
+                </div>
               </AlertDescription>
             </Alert>
           )}
@@ -254,7 +314,7 @@ export default function LoginPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Logging In..." : "Login"}
+              {isLoading ? "Logging In..." : "Login with Email"}
             </Button>
           </form>
 
