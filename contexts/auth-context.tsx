@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react"
 import { onAuthStateChanged, isSignInWithEmailLink, signInWithEmailLink, type User } from "firebase/auth"
 import { doc, getDoc, setDoc } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase"
@@ -10,7 +10,8 @@ interface AuthContextType {
   user: User | null
   loading: boolean
   isPremium: boolean
-  refreshUserData: () => Promise<void> // Add function to refresh user data
+  refreshUserData: () => Promise<void>
+  connectionStatus: "connecting" | "connected" | "error"
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -19,31 +20,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [isPremium, setIsPremium] = useState(false)
+  const [connectionStatus, setConnectionStatus] = useState<"connecting" | "connected" | "error">("connecting")
 
-  const refreshUserData = async () => {
-    if (user?.uid) {
-      try {
-        const userRef = doc(db, "users", user.uid)
-        const userSnap = await getDoc(userRef)
-        if (userSnap.exists()) {
-          setIsPremium(userSnap.data().isPremium || false)
-        } else {
-          // Create user document if it doesn't exist
-          await setDoc(userRef, {
-            email: user.email,
-            displayName: user.displayName,
-            isPremium: false,
-            createdAt: new Date(),
+  const refreshUserData = useCallback(async () => {
+    if (!user?.uid) return
+
+    setConnectionStatus("connecting")
+
+    try {
+      const userRef = doc(db, "users", user.uid)
+      const userSnap = await getDoc(userRef)
+
+      if (userSnap.exists()) {
+        const userData = userSnap.data()
+        setIsPremium(userData.isPremium || false)
+
+        // Update last login
+        await setDoc(
+          userRef,
+          {
+            ...userData,
             lastLoginAt: new Date(),
-          })
-          setIsPremium(false)
+          },
+          { merge: true },
+        )
+      } else {
+        // Create user document if it doesn't exist
+        const newUserData = {
+          email: user.email,
+          displayName: user.displayName,
+          isPremium: false,
+          createdAt: new Date(),
+          lastLoginAt: new Date(),
         }
-      } catch (error) {
-        console.error("Error fetching/creating user data:", error)
+
+        await setDoc(userRef, newUserData)
         setIsPremium(false)
       }
+
+      setConnectionStatus("connected")
+    } catch (error) {
+      console.error("Error fetching/creating user data:", error)
+      setIsPremium(false)
+      setConnectionStatus("error")
+
+      // Retry after a delay
+      setTimeout(() => {
+        refreshUserData()
+      }, 3000)
     }
-  }
+  }, [user?.uid])
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -54,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await refreshUserData()
       } else {
         setIsPremium(false)
+        setConnectionStatus("connecting")
       }
     })
 
@@ -94,9 +121,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     return () => unsubscribe()
-  }, [user?.uid])
+  }, [refreshUserData])
 
-  return <AuthContext.Provider value={{ user, loading, isPremium, refreshUserData }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, loading, isPremium, refreshUserData, connectionStatus }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {
