@@ -1,90 +1,96 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import {
-  getAnalyticsMetrics,
-  clearAnalyticsData,
-  getDailyAnalyticsTrends,
-  type AnalyticsEntry,
-  getAnalyticsData,
-} from "@/lib/analytics-utils"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { PieChart, Pie, Cell, Legend } from "recharts"
-import { History, RefreshCcw, Trash2 } from "lucide-react"
-import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { BarChart3, TrendingUp, Clock, MessageSquare, Target, Calendar, AlertCircle, RefreshCw } from "lucide-react"
+import { getAnalyticsData, type AnalyticsData } from "@/lib/analytics-utils"
 
 export default function AnalyticsPageClient() {
   const { user, loading: authLoading } = useAuth()
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsEntry[]>([])
-  const [metrics, setMetrics] = useState({ totalConversations: 0, overthinkingCount: 0, validCount: 0 })
-  const [dailyTrends, setDailyTrends] = useState([])
-  const [isLoadingData, setIsLoadingData] = useState(true)
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!authLoading) {
+    if (user?.uid && !authLoading) {
       loadAnalytics()
+    } else if (!authLoading && !user) {
+      setError("Please log in to view analytics")
+      setLoading(false)
     }
   }, [user, authLoading])
 
   const loadAnalytics = async () => {
-    setIsLoadingData(true)
-    if (user?.uid) {
+    if (!user?.uid) return
+
+    try {
+      setLoading(true)
+      setError(null)
       const data = await getAnalyticsData(user.uid)
-      setAnalyticsData(data)
-      setMetrics(await getAnalyticsMetrics(user.uid))
-      setDailyTrends(await getDailyAnalyticsTrends(user.uid))
-    } else {
-      setAnalyticsData([])
-      setMetrics({ totalConversations: 0, overthinkingCount: 0, validCount: 0 })
-      setDailyTrends([])
+      setAnalytics(data)
+    } catch (err) {
+      console.error("Analytics error:", err)
+      setError(err instanceof Error ? err.message : "Failed to load analytics")
+    } finally {
+      setLoading(false)
     }
-    setIsLoadingData(false)
   }
 
-  const handleClearAnalytics = async () => {
-    if (user?.uid) {
-      await clearAnalyticsData(user.uid)
-      toast({
-        title: "Analytics Cleared",
-        description: "All your analytics data has been removed from the cloud.",
-      })
-    } else {
-      toast({
-        title: "Analytics Cleared Locally",
-        description: "All your local analytics data has been removed.",
-      })
-    }
-    loadAnalytics()
-  }
-
-  const overthinkingPercentage =
-    metrics.totalConversations > 0 ? ((metrics.overthinkingCount / metrics.totalConversations) * 100).toFixed(1) : "0.0"
-  const validPercentage =
-    metrics.totalConversations > 0 ? ((metrics.validCount / metrics.totalConversations) * 100).toFixed(1) : "0.0"
-
-  const chartData = [
-    { name: "Overthinking", value: metrics.overthinkingCount, fill: "hsl(var(--overthinkr-500))" },
-    { name: "Valid Concern", value: metrics.validCount, fill: "hsl(var(--secondary))" },
-  ]
-
-  const pieChartData = [
-    { name: "Overthinking", value: metrics.overthinkingCount },
-    { name: "Valid Concern", value: metrics.validCount },
-  ]
-
-  const COLORS = ["hsl(var(--overthinkr-500))", "hsl(var(--secondary))"]
-
-  if (authLoading || isLoadingData) {
+  if (authLoading || loading) {
     return (
       <div className="container mx-auto py-6 px-4 md:py-10">
-        <div className="mx-auto max-w-3xl text-center">
-          <p className="text-muted-foreground">Loading analytics data...</p>
+        <div className="mx-auto max-w-4xl">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-32 bg-gray-200 rounded"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto py-6 px-4 md:py-10">
+        <div className="mx-auto max-w-2xl">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                <h2 className="text-xl font-semibold mb-2">Analytics Unavailable</h2>
+                <p className="text-muted-foreground mb-4">{error}</p>
+                <Button onClick={loadAnalytics} variant="outline">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  if (!analytics) {
+    return (
+      <div className="container mx-auto py-6 px-4 md:py-10">
+        <div className="mx-auto max-w-2xl">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h2 className="text-xl font-semibold mb-2">No Data Yet</h2>
+                <p className="text-muted-foreground">Start using Overthinkr to see your analytics here!</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     )
@@ -92,140 +98,96 @@ export default function AnalyticsPageClient() {
 
   return (
     <div className="container mx-auto py-6 px-4 md:py-10">
-      <div className="mx-auto max-w-3xl">
-        <Card className="border-2 shadow-lg rounded-xl overflow-hidden">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <History className="h-5 w-5" />
-              Your Overthinkr Analytics
-            </CardTitle>
-            <CardDescription>
-              Insights into your past Overthinkr sessions. Data is stored in the cloud when logged in.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-4 space-y-6">
-            {!user && (
-              <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>Log in to save and access your analytics data across devices.</AlertDescription>
-              </Alert>
-            )}
+      <div className="mx-auto max-w-4xl">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Analytics</h1>
+          <p className="text-muted-foreground">Track your overthinking patterns and progress over time.</p>
+        </div>
 
-            {metrics.totalConversations === 0 ? (
-              <div className="text-center py-10 text-muted-foreground">
-                <p>No analytics data yet. Start chatting with Overthinkr to see your patterns!</p>
-                <Button
-                  onClick={() => (window.location.href = "/chat")}
-                  className="mt-4 bg-overthinkr-600 hover:bg-overthinkr-700"
-                >
-                  Go to Chat
-                </Button>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{analytics.totalSessions}</div>
+              <p className="text-xs text-muted-foreground">Conversations completed</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Average Session Time</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{analytics.averageSessionTime}m</div>
+              <p className="text-xs text-muted-foreground">Time per conversation</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Clarity Score</CardTitle>
+              <Target className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{analytics.clarityScore}%</div>
+              <p className="text-xs text-muted-foreground">Average clarity improvement</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Weekly Progress</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">+{analytics.weeklyProgress}%</div>
+              <p className="text-xs text-muted-foreground">Improvement this week</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Streak</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{analytics.currentStreak}</div>
+              <p className="text-xs text-muted-foreground">Days in a row</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Most Active Time</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{analytics.mostActiveTime}</div>
+              <p className="text-xs text-muted-foreground">Peak usage hour</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {analytics.topConcerns && analytics.topConcerns.length > 0 && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Top Concerns</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {analytics.topConcerns.map((concern, index) => (
+                  <Badge key={index} variant="secondary">
+                    {concern}
+                  </Badge>
+                ))}
               </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardDescription>Total Sessions</CardDescription>
-                      <CardTitle className="text-4xl">{metrics.totalConversations}</CardTitle>
-                    </CardHeader>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardDescription>Overthinking Rate</CardDescription>
-                      <CardTitle className="text-4xl">{overthinkingPercentage}%</CardTitle>
-                    </CardHeader>
-                  </Card>
-                </div>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Classification Distribution</CardTitle>
-                    <CardDescription>How often Overthinkr classified your thoughts.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ChartContainer
-                      config={{
-                        Overthinking: {
-                          label: "Overthinking",
-                          color: "hsl(var(--overthinkr-500))",
-                        },
-                        "Valid Concern": {
-                          label: "Valid Concern",
-                          color: "hsl(var(--secondary))",
-                        },
-                      }}
-                      className="h-[250px] w-full"
-                    >
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                          <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                          <YAxis />
-                          <ChartTooltip content={<ChartTooltipContent />} />
-                          <Bar dataKey="value" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </ChartContainer>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Proportion of Classifications</CardTitle>
-                    <CardDescription>A breakdown of your thought patterns.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex items-center justify-center">
-                    <ChartContainer
-                      config={{
-                        Overthinking: {
-                          label: "Overthinking",
-                          color: "hsl(var(--overthinkr-500))",
-                        },
-                        "Valid Concern": {
-                          label: "Valid Concern",
-                          color: "hsl(var(--secondary))",
-                        },
-                      }}
-                      className="h-[250px] w-full"
-                    >
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={pieChartData}
-                            cx="50%"
-                            cy="50%"
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                            labelLine={false}
-                          >
-                            {pieChartData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Legend />
-                          <ChartTooltip content={<ChartTooltipContent />} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </ChartContainer>
-                  </CardContent>
-                </Card>
-
-                <div className="flex justify-end gap-2 mt-4">
-                  <Button variant="outline" onClick={loadAnalytics}>
-                    <RefreshCcw className="h-4 w-4 mr-2" />
-                    Refresh Data
-                  </Button>
-                  <Button variant="destructive" onClick={handleClearAnalytics}>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Clear All Analytics
-                  </Button>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )
